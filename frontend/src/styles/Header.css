@@ -1,0 +1,106 @@
+.dashboard-header {
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 30px;
+  border-bottom: 1px solid #ddd;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.header-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.header-gov,
+.header-dept,
+.header-bureau,
+.header-title {
+  margin: 0;
+  font-size: 11px;
+  color: #333;
+  font-weight: 500;
+}
+
+.header-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a3a4a;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  width: 200px;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.user-badge {
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.page-title {
+  padding: 15px 30px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  background: #f9f9f9;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 15px;
+  }
+
+  .header-text {
+    display: none;
+  }
+
+  .search-input {
+    width: 150px;
+  }
+
+  .page-title {
+    font-size: 18px;
+    padding: 10px 15px;
+  }
+}
