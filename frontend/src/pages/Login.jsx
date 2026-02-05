@@ -74,7 +74,7 @@ export default function Login() {
 
         <div className="login-info-section">
           <h1>Welcome to<br /><strong>FARMC</strong></h1>
-          <h3>WHAT IS FARMC</h3>
+          <h3>WHAT IS FARMC DATABASE SYSTEM</h3>
           <p>
             The FARMC is a multi-sectoral advisory body established under Republic Act No. 8550 
             (The Philippine Fisheries Code of 1998, as amended by RA 10654). It is designed to 

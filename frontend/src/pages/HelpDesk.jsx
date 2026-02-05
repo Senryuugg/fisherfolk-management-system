@@ -18,11 +18,10 @@ export default function HelpDesk() {
       icon: '🏢',
       content: `
         <h4>Bureau of Fisheries and Aquatic Resources</h4>
-        <p><strong>Address:</strong> Elliptical Road, Diliman, Quezon City 1101</p>
-        <p><strong>Hotline:</strong> (632) 920-5500</p>
-        <p><strong>Email:</strong> bfar@da.gov.ph</p>
+        <p><strong>Address:</strong> Fisheries Building Complex, BPI Compound, Visayas Ave, Quezon City, Metro Manila</p>
+        <p><strong>Hotline:</strong> (+63(2)8539-5685</p>
+        <p><strong>Email:</strong>info@bfar.da.gov.ph</p>
         <p><strong>Working Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
-        <p>For general inquiries about the FARMC database system and administrative matters.</p>
       `,
     },
     {
@@ -31,9 +30,9 @@ export default function HelpDesk() {
       icon: '🗺️',
       content: `
         <h4>BFAR Regional Office - NCR</h4>
-        <p><strong>Address:</strong> Rama VI Avenue Extension, Port Area, Manila</p>
+        <p><strong>Address:</strong> 8 Kalayaan Ave, Diliman, Quezon City, Metro Manila</p>
         <p><strong>Hotline:</strong> (632) 527-3456</p>
-        <p><strong>Email:</strong> bfar.ncr@da.gov.ph</p>
+        <p><strong>Email:</strong> records.ncr@bfar.da.gov.ph/info.ncr@bfar.da.gov.ph </p>
         <p><strong>Working Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
         <p>For regional support and assistance with local inquiries.</p>
       `,

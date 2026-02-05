@@ -14,7 +14,6 @@ export default function Header({ title, user }) {
           </div>
         </div>
         <div className="header-right">
-          <input type="text" placeholder="Search" className="search-input" />
           {user && <span className="user-badge">{user.fullName}</span>}
         </div>
       </div>

@@ -35,13 +35,13 @@ export default function Dashboard() {
           </div>
           
           <div className="stat-card">
-            <h3>Active Organizations</h3>
+            <h3>Total No. of C/MFARMCs established</h3>
             <p className="stat-number">45</p>
             <small>Across all regions</small>
           </div>
 
           <div className="stat-card">
-            <h3>Registered Boats</h3>
+            <h3>Total No. of Registered Fisherfolk Organizations/Cooperative</h3>
             <p className="stat-number">823</p>
             <small>Increase this month</small>
           </div>
