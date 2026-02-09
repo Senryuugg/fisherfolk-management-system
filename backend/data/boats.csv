@@ -1,0 +1,7 @@
+frsNumber,mfbrNumber,boatName,address,registrationDate,status,gears
+FRS-001,MFBR-2024-001,Lucky Catch,Manila Harbor NCR,2026-01-23,active,Hook and Line|Net|Trap
+FRS-002,MFBR-2024-002,Blue Wave,Pasay Port NCR,2026-02-10,active,Gillnet|Hook and Line
+FRS-003,MFBR-2024-003,Sea Star,Cavite Port,2024-05-18,active,Purse Seine|Net
+FRS-004,MFBR-2024-004,Ocean Pride,Manila South Harbor,2025-03-22,active,Hook and Line|Trap|Longline
+FRS-005,MFBR-2024-005,Fisherman's Dream,Navotas Port,2024-08-30,active,Gillnet|Purse Seine
+FRS-006,MFBR-2024-006,Wave Rider,Las Piñas Marina,2024-09-14,active,Hook and Line|Net|Trap

@@ -165,7 +165,7 @@ export default function FisherfolkList() {
                   <th>REGISTRATION DATE</th>
                   <th>LASTNAME</th>
                   <th>FIRSTNAME</th>
-                  <th>MIDDLE NAME</th>
+                  <th>MIDDLENAME</th>
                   <th>PROVINCE</th>
                   <th>CITY/MUNICIPALITY</th>
                   <th>BARANGAY</th>

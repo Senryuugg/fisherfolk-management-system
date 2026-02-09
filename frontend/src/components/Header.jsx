@@ -9,7 +9,7 @@ export default function Header({ title, user }) {
           <div className="header-text">
             <p className="header-gov">REPUBLIC OF THE PHILIPPINES</p>
             <p className="header-dept">DEPARTMENT OF AGRICULTURE</p>
-            <p className="header-bureau">BUREAU OF FISHERIES AND AQUATIC RESOURCES - NCR</p>
+            <p className="header-bureau">BUREAU OF FISHERIES AND AQUATIC RESOURCES</p>
             <p className="header-title">FISHERIES AND AQUATIC RESOURCES MANAGEMENT COUNCILS DATABASE SYSTEM</p>
           </div>
         </div>

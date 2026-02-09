@@ -10,6 +10,10 @@ export default function BoatsGears() {
   const { user, logout } = useContext(AuthContext);
   const [currentPage, setCurrentPage] = useState('boats-gears');
   const [activeTab, setActiveTab] = useState('boats');
+  const [filters, setFilters] = useState({
+    search: '',
+    status: '',
+  });
 
   const boatsData = [
     {
@@ -34,12 +38,52 @@ export default function BoatsGears() {
     },
   ];
 
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleResetFilters = () => {
+    setFilters({ search: '', status: '' });
+  };
+
+  const filteredBoats = boatsData.filter((boat) => {
+    const matchesSearch = boat.fisherfolkName.toLowerCase().includes(filters.search.toLowerCase()) ||
+      boat.mfbrNo.toLowerCase().includes(filters.search.toLowerCase());
+    const matchesStatus = filters.status === '' || boat.status.toLowerCase() === filters.status.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="dashboard-container">
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={logout} />
       <div className="main-content">
         <Header title="LIST OF REGISTERED BOATS AND GEARS" user={user} />
         <div className="content-area boats-gears-container">
+          <div className="filter-section">
+            <h3>SEARCH BOATS AND GEARS</h3>
+            <div className="filters-grid">
+              <input
+                type="text"
+                name="search"
+                placeholder="Search by name or MFBR number..."
+                value={filters.search}
+                onChange={handleFilterChange}
+                className="search-box"
+              />
+              <select name="status" value={filters.status} onChange={handleFilterChange}>
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <div className="filter-buttons">
+              <button className="reset-btn" onClick={handleResetFilters}>
+                Reset
+              </button>
+            </div>
+          </div>
+
           <div className="tabs-section">
             <div className="tabs">
               <button
@@ -74,19 +118,27 @@ export default function BoatsGears() {
                     </tr>
                   </thead>
                   <tbody>
-                    {boatsData.map((boat) => (
-                      <tr key={boat.id}>
-                        <td>{boat.frsNo || '-'}</td>
-                        <td>{boat.mfbrNo}</td>
-                        <td>{boat.fisherfolkName}</td>
-                        <td>{boat.boatName}</td>
-                        <td>{boat.address}</td>
-                        <td>{boat.registrationDate}</td>
-                        <td>
-                          <span className="status-badge active">{boat.status}</span>
+                    {filteredBoats.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="empty-cell">
+                          No boats found
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredBoats.map((boat) => (
+                        <tr key={boat.id}>
+                          <td>{boat.frsNo || '-'}</td>
+                          <td>{boat.mfbrNo}</td>
+                          <td>{boat.fisherfolkName}</td>
+                          <td>{boat.boatName}</td>
+                          <td>{boat.address}</td>
+                          <td>{boat.registrationDate}</td>
+                          <td>
+                            <span className="status-badge active">{boat.status}</span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -9,6 +9,8 @@ import FisherfolkList from './pages/FisherfolkList';
 import BoatsGears from './pages/BoatsGears';
 import Report from './pages/Report';
 import Organization from './pages/Organization';
+import OrdinanceResolution from './pages/OrdinanceResolution';
+import LevelsOfDevelopment from './pages/LevelsOfDevelopment';
 import Maps from './pages/Maps';
 import HelpDesk from './pages/HelpDesk';
 import FAQs from './pages/FAQs';
@@ -65,6 +67,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Organization />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ordinance"
+            element={
+              <ProtectedRoute>
+                <OrdinanceResolution />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/levels"
+            element={
+              <ProtectedRoute>
+                <LevelsOfDevelopment />
               </ProtectedRoute>
             }
           />
