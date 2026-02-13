@@ -1,16 +1,70 @@
-.org-section {
-  background: white;
-  border: 2px solid #b3e5fc;
-  border-radius: 8px;
-  padding: 25px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.org-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
 }
 
-.org-section h3 {
-  font-size: 16px;
-  font-weight: 700;
+.org-table-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.org-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+  gap: 15px;
+}
+
+.org-tabs {
+  display: flex;
+  gap: 5px;
+  border-bottom: none;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.org-tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s;
+}
+
+.org-tab:hover {
   color: #1a3a4a;
-  margin-bottom: 20px;
+}
+
+.org-tab.active {
+  color: #4a9eff;
+  border-bottom-color: #4a9eff;
+}
+
+.org-tab-content {
+  background: white;
+  padding: 20px 25px;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.org-search-input {
+  flex: 1 !important;
 }
 
 .org-search-form {
@@ -99,13 +153,14 @@
 .org-table thead {
   background: #b3e5fc;
   color: #1a3a4a;
+  font-weight: 700;
 }
 
 .org-table th {
-  padding: 12px 15px;
+  padding: 15px;
   text-align: left;
-  font-weight: 700;
   border-bottom: 2px solid #81d4fa;
+  white-space: nowrap;
 }
 
 .org-table td {
@@ -114,7 +169,7 @@
 }
 
 .org-table tbody tr:hover {
-  background: #fff;
+  background: #f9f9f9;
 }
 
 .loading-text,

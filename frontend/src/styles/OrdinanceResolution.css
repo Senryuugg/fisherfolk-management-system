@@ -2,13 +2,155 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+}
+
+.or-table-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.or-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+  gap: 15px;
+}
+
+.or-tabs {
+  display: flex;
+  gap: 5px;
+  border-bottom: none;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.or-tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s;
+}
+
+.or-tab:hover {
+  color: #1a3a4a;
+}
+
+.or-tab.active {
+  color: #4a9eff;
+  border-bottom-color: #4a9eff;
+}
+
+.file-upload-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #666;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-label:hover {
+  border-color: #4a9eff;
+  background: #f0f8ff;
+}
+
+.upload-btn {
+  padding: 6px 12px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.upload-btn:hover {
+  background: #229954;
 }
 
 .tab-content {
   background: white;
-  padding: 25px;
-  border-radius: 8px;
+  padding: 20px 25px;
+  border-radius: 0 0 8px 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.table-header-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.tab-content h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a3a4a;
+  margin: 0;
+}
+
+.items-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.items-per-page label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+}
+
+.items-per-page select {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  cursor: pointer;
+}
+
+.items-per-page span {
+  font-size: 12px;
+  color: #666;
 }
 
 .tab-content h3 {

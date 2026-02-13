@@ -36,6 +36,51 @@ export default function FisherfolkList() {
     barangay: '',
     status: '',
   });
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [activeTab, setActiveTab] = useState('active');
+
+  // Temporary mock data for testing
+  const tempFisherfolk = [
+    {
+      _id: '1',
+      rsbsaNumber: 'RSBSA-001',
+      registrationNumber: 'REG-001',
+      firstName: 'Juan',
+      lastName: 'Dela Cruz',
+      middleName: 'Santos',
+      registrationDate: '2026-01-15',
+      province: 'Quezon',
+      cityMunicipality: 'Quezon City',
+      barangay: 'Tatalon',
+      status: 'active',
+    },
+    {
+      _id: '2',
+      rsbsaNumber: 'RSBSA-002',
+      registrationNumber: 'REG-002',
+      firstName: 'Maria',
+      lastName: 'Santos',
+      middleName: 'Garcia',
+      registrationDate: '2026-01-10',
+      province: 'Manila',
+      cityMunicipality: 'Manila',
+      barangay: 'Barangay 1',
+      status: 'active',
+    },
+    {
+      _id: '3',
+      rsbsaNumber: 'RSBSA-003',
+      registrationNumber: 'REG-003',
+      firstName: 'Pedro',
+      lastName: 'Reyes',
+      middleName: 'Lopez',
+      registrationDate: '2025-12-20',
+      province: 'Cavite',
+      cityMunicipality: 'Kawit',
+      barangay: 'Magdalo',
+      status: 'inactive',
+    },
+  ];
 
   // Fetch fisherfolk data
   useEffect(() => {
@@ -45,6 +90,12 @@ export default function FisherfolkList() {
   const fetchFisherfolk = async () => {
     setLoading(true);
     try {
+      // Using temporary mock data for now
+      console.log("[v0] Loading temporary fisherfolk data:", tempFisherfolk);
+      setFisherfolk(tempFisherfolk);
+      setError('');
+      
+      /* Original API call - will use when API is ready
       const response = await fisherfolkAPI.getAll({
         search: filters.search,
         province: filters.province,
@@ -53,7 +104,7 @@ export default function FisherfolkList() {
         status: filters.status,
       });
       setFisherfolk(response.data);
-      setError('');
+      */
     } catch (err) {
       setError('Failed to load fisherfolk data');
       console.error(err);
@@ -64,8 +115,39 @@ export default function FisherfolkList() {
 
   const handleAddFisherfolk = async (e) => {
     e.preventDefault();
+    
+    // Validate required fields
+    if (!formData.rsbsaNumber || !formData.firstName || !formData.lastName) {
+      setError('Please fill in all required fields (RSBSA Number, First Name, Last Name)');
+      return;
+    }
+
     try {
-      await fisherfolkAPI.create(formData);
+      const newFisherfolk = {
+        rsbsaNumber: formData.rsbsaNumber,
+        registrationNumber: formData.registrationNumber,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        middleName: formData.middleName,
+        registrationDate: formData.registrationDate || new Date().toLocaleDateString(),
+        province: formData.province,
+        cityMunicipality: formData.cityMunicipality,
+        barangay: formData.barangay,
+        mainLivelihood: formData.mainLivelihood,
+        alternativeLivelihood: formData.alternativeLivelihood,
+        status: formData.status,
+      };
+      
+      // Add to local state immediately
+      setFisherfolk([...fisherfolk, { ...newFisherfolk, _id: Date.now().toString() }]);
+      
+      // Also try to save to backend
+      try {
+        await fisherfolkAPI.create(newFisherfolk);
+      } catch (backendErr) {
+        console.error('Backend save failed, but added to local state', backendErr);
+      }
+      
       setShowAddModal(false);
       setFormData({
         rsbsaNumber: '',
@@ -81,7 +163,7 @@ export default function FisherfolkList() {
         alternativeLivelihood: '',
         status: 'active',
       });
-      fetchFisherfolk();
+      setError('');
     } catch (err) {
       setError('Failed to create fisherfolk');
       console.error(err);
@@ -102,113 +184,119 @@ export default function FisherfolkList() {
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={logout} />
       <div className="main-content">
         <Header title="FISHERFOLK LIST" user={user} />
-        <div className="content-area">
-          <div className="filter-section">
-            <h3>SEARCH ACTIVE FISHERFOLK</h3>
-            <div className="filters-grid">
-              <input
-                type="text"
-                name="search"
-                placeholder="Search by name or RSBSA number..."
-                value={filters.search}
-                onChange={handleFilterChange}
-                className="search-box"
-              />
-              <input
-                type="text"
-                name="province"
-                placeholder="Province"
-                value={filters.province}
-                onChange={handleFilterChange}
-              />
-              <input
-                type="text"
-                name="city"
-                placeholder="City/Municipality"
-                value={filters.city}
-                onChange={handleFilterChange}
-              />
-              <input
-                type="text"
-                name="barangay"
-                placeholder="Barangay"
-                value={filters.barangay}
-                onChange={handleFilterChange}
-              />
-              <select name="status" value={filters.status} onChange={handleFilterChange}>
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-            <div className="filter-buttons">
-              <button className="search-btn" onClick={fetchFisherfolk}>
-                Search
-              </button>
-              <button className="reset-btn" onClick={handleResetFilters}>
-                Reset
-              </button>
-              <button className="add-btn" onClick={() => setShowAddModal(true)}>
-                + Add Fisherfolk
-              </button>
-            </div>
-          </div>
-
+        <div className="content-area fisherfolk-container">
           {error && <div className="error-message">{error}</div>}
 
-          <div className="table-section">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>RSBSA NUMBER</th>
-                  <th>REGISTRATION NUMBER</th>
-                  <th>REGISTRATION DATE</th>
-                  <th>LASTNAME</th>
-                  <th>FIRSTNAME</th>
-                  <th>MIDDLENAME</th>
-                  <th>PROVINCE</th>
-                  <th>CITY/MUNICIPALITY</th>
-                  <th>BARANGAY</th>
-                  <th>STATUS</th>
-                  <th>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="11" className="loading-cell">
-                      Loading...
-                    </td>
-                  </tr>
-                ) : fisherfolk.length === 0 ? (
-                  <tr>
-                    <td colSpan="11" className="empty-cell">
-                      No fisherfolk found
-                    </td>
-                  </tr>
-                ) : (
-                  fisherfolk.map((fish) => (
-                    <tr key={fish._id}>
-                      <td>{fish.rsbsaNumber}</td>
-                      <td>{fish.registrationNumber || '-'}</td>
-                      <td>{fish.registrationDate ? new Date(fish.registrationDate).toLocaleDateString() : '-'}</td>
-                      <td>{fish.lastName}</td>
-                      <td>{fish.firstName}</td>
-                      <td>{fish.middleName || '-'}</td>
-                      <td>{fish.province || '-'}</td>
-                      <td>{fish.cityMunicipality || '-'}</td>
-                      <td>{fish.barangay || '-'}</td>
-                      <td>
-                        <span className={`status-badge ${fish.status}`}>{fish.status}</span>
-                      </td>
-                      <td>
-                        <button className="edit-btn">Edit</button>
-                      </td>
+          <div className="ff-table-section">
+            {/* Tabs in Table Header */}
+            <div className="ff-tabs-header">
+              <div className="ff-tabs">
+                <button
+                  className={`ff-tab ${activeTab === 'active' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('active')}
+                >
+                  Active
+                </button>
+                <button
+                  className={`ff-tab ${activeTab === 'inactive' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('inactive')}
+                >
+                  Inactive
+                </button>
+              </div>
+            </div>
+
+            <div className="tab-content">
+              <div className="table-header">
+                <h3>List of Fisherfolk:</h3>
+                <button className="add-btn" onClick={() => setShowAddModal(true)}>
+                  + Add Fisherfolk
+                </button>
+              </div>
+
+              <div className="table-controls">
+                <div className="items-per-page">
+                  <label>Show:</label>
+                  <select value={itemsPerPage} onChange={(e) => setItemsPerPage(Number(e.target.value))}>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={30}>30</option>
+                    <option value={40}>40</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>items per page</span>
+                </div>
+              </div>
+
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>RSBSA NUMBER</th>
+                      <th>REGISTRATION NUMBER</th>
+                      <th>REGISTRATION DATE</th>
+                      <th>LASTNAME</th>
+                      <th>FIRSTNAME</th>
+                      <th>MIDDLE NAME</th>
+                      <th>PROVINCE</th>
+                      <th>CITY/MUNICIPALITY</th>
+                      <th>BARANGAY</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                    <tr className="filter-row">
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                      <td><input type="text" placeholder="Search last name" className="filter-input" value={filters.lastName || ''} onChange={handleFilterChange} name="lastName" /></td>
+                      <td><input type="text" placeholder="Search first name" className="filter-input" value={filters.firstName || ''} onChange={handleFilterChange} name="firstName" /></td>
+                      <td><input type="text" placeholder="Search middle name" className="filter-input" value={filters.middleName || ''} onChange={handleFilterChange} name="middleName" /></td>
+                      <td></td>
+                      <td></td>
+                      <td></td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="9" className="loading-cell">
+                          Loading...
+                        </td>
+                      </tr>
+                    ) : fisherfolk.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="empty-cell">
+                          No fisherfolk found
+                        </td>
+                      </tr>
+                    ) : (
+                      fisherfolk
+                        .filter((fish) => {
+                          const fishStatus = fish.status ? fish.status.toLowerCase() : 'active';
+                          const statusMatch = activeTab === 'active' ? fishStatus === 'active' : fishStatus === 'inactive';
+                          
+                          const lastNameMatch = !filters.lastName || fish.lastName.toLowerCase().includes(filters.lastName.toLowerCase());
+                          const firstNameMatch = !filters.firstName || fish.firstName.toLowerCase().includes(filters.firstName.toLowerCase());
+                          const middleNameMatch = !filters.middleName || (fish.middleName && fish.middleName.toLowerCase().includes(filters.middleName.toLowerCase()));
+                          
+                          return statusMatch && lastNameMatch && firstNameMatch && middleNameMatch;
+                        })
+                        .map((fish) => (
+                          <tr key={fish._id}>
+                            <td>{fish.rsbsaNumber}</td>
+                            <td>{fish.registrationNumber || '-'}</td>
+                            <td>{fish.registrationDate ? new Date(fish.registrationDate).toLocaleDateString() : '-'}</td>
+                            <td>{fish.lastName}</td>
+                            <td>{fish.firstName}</td>
+                            <td>{fish.middleName || '-'}</td>
+                            <td>{fish.province || '-'}</td>
+                            <td>{fish.cityMunicipality || '-'}</td>
+                            <td>{fish.barangay || '-'}</td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           {showAddModal && (

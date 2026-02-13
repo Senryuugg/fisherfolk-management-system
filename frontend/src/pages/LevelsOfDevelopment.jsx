@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Header from '../components/Header';
@@ -10,6 +10,7 @@ import '../styles/LevelsOfDevelopment.css';
 export default function LevelsOfDevelopment() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState('levels');
 
   const handleLogout = () => {
     logout();
@@ -65,9 +66,9 @@ export default function LevelsOfDevelopment() {
 
   return (
     <div className="dashboard-container">
-      <Sidebar onLogout={handleLogout} />
+      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} />
       <div className="main-content">
-        <Header userName={user?.name} onLogout={handleLogout} />
+        <Header title="LEVELS OF DEVELOPMENT" user={user} />
         <div className="content-area levels-container">
           <div className="levels-header">
             <h1>LEVELS OF DEVELOPMENT</h1>
@@ -93,12 +94,6 @@ export default function LevelsOfDevelopment() {
                     <h4>{level.title}</h4>
                   </div>
                   <p className="level-description">{level.description}</p>
-                  <button
-                    className="download-btn"
-                    onClick={() => handleDownload(level.fileUrl)}
-                  >
-                    Download
-                  </button>
                 </div>
               ))}
             </div>

@@ -13,6 +13,7 @@ import OrdinanceResolution from './pages/OrdinanceResolution';
 import LevelsOfDevelopment from './pages/LevelsOfDevelopment';
 import Maps from './pages/Maps';
 import HelpDesk from './pages/HelpDesk';
+import ManageAccount from './pages/ManageAccount';
 import FAQs from './pages/FAQs';
 import './styles/Global.css';
 
@@ -99,6 +100,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HelpDesk />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-account"
+            element={
+              <ProtectedRoute>
+                <ManageAccount />
               </ProtectedRoute>
             }
           />

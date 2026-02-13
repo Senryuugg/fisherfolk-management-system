@@ -4,9 +4,40 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
   height: 100%;
+}
+
+/* Light Mode Theme (Default) */
+html.light-mode {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #f9f9f9;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #dddddd;
+  --input-bg: #ffffff;
+  --input-border: #cccccc;
+  --sidebar-bg: #f5f5f5;
+  --header-bg: #ffffff;
+  --table-header-bg: #b3e5fc;
+  --table-row-border: #eeeeee;
+}
+
+/* Dark Mode Theme */
+html.dark-mode {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #252525;
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b0b0;
+  --border-color: #404040;
+  --input-bg: #2d2d2d;
+  --input-border: #404040;
+  --sidebar-bg: #252525;
+  --header-bg: #1e1e1e;
+  --table-header-bg: #0d47a1;
+  --table-row-border: #404040;
 }
 
 body {
@@ -14,8 +45,10 @@ body {
     'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f5f5f5;
-  color: #333;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background 0.3s, color 0.3s;
+  height: 100%;
 }
 
 #root {
@@ -38,15 +71,99 @@ select {
   height: 8px;
 }
 
-::-webkit-scrollbar-track {
+html.light-mode ::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
 
-::-webkit-scrollbar-thumb {
+html.light-mode ::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
+html.light-mode ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+html.dark-mode ::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb {
+  background: #555555;
+  border-radius: 4px;
+}
+
+html.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #777777;
+}
+
+/* Dark mode - Header (Always light, excluded from dark mode) */
+html.dark-mode .dashboard-header {
+  background: #ffffff;
+  border-bottom: 1px solid #dddddd;
+  color: #333333;
+}
+
+html.dark-mode .dashboard-header .header-gov,
+html.dark-mode .dashboard-header .header-dept,
+html.dark-mode .dashboard-header .header-bureau,
+html.dark-mode .dashboard-header .header-title {
+  color: #333333;
+}
+
+html.dark-mode .page-title {
+  background: #ffffff;
+  color: #333333;
+  border-bottom: 1px solid #dddddd;
+}
+
+/* Dark mode - Sidebar */
+html.dark-mode .sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+}
+
+html.dark-mode .sidebar a,
+html.dark-mode .sidebar button {
+  color: var(--text-primary);
+}
+
+/* Dark mode - Cards and containers */
+html.dark-mode .dashboard-container,
+html.dark-mode .card {
+  background: var(--bg-primary);
+}
+
+/* Dark mode - Inputs */
+html.dark-mode input,
+html.dark-mode textarea,
+html.dark-mode select {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--input-border);
+}
+
+html.dark-mode input:focus,
+html.dark-mode textarea:focus,
+html.dark-mode select:focus {
+  border-color: #4a9eff;
+}
+
+/* Dark mode - Tables */
+html.dark-mode table {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+html.dark-mode thead {
+  background: var(--table-header-bg);
+  color: white;
+}
+
+html.dark-mode tbody tr {
+  border-bottom: 1px solid var(--table-row-border);
+}
+
+html.dark-mode tbody tr:hover {
+  background: var(--bg-secondary);
 }

@@ -10,7 +10,16 @@ import '../styles/Organization.css';
 export default function Organization() {
   const { user, logout } = useContext(AuthContext);
   const [currentPage, setCurrentPage] = useState('organization');
+  const [activeTab, setActiveTab] = useState('organization');
   const [organizations, setOrganizations] = useState([]);
+  const [committees, setCommittees] = useState([
+    { id: 1, name: 'Fisheries Committee', organization: 'BFAR', status: 'Active' },
+    { id: 2, name: 'Conservation Committee', organization: 'BFAR', status: 'Active' },
+  ]);
+  const [officers, setOfficers] = useState([
+    { id: 1, name: 'Juan Dela Cruz', position: 'Chairman', organization: 'BFAR', status: 'Active' },
+    { id: 2, name: 'Maria Santos', position: 'Vice Chairman', organization: 'BFAR', status: 'Active' },
+  ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -84,65 +93,170 @@ export default function Organization() {
       <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={logout} />
       <div className="main-content">
         <Header title="ORGANIZATION" user={user} />
-        <div className="content-area">
-          <div className="org-section">
-            <h3>ORGANIZATION</h3>
-            <div className="org-search-form">
-              <div className="search-inputs">
-                <input
-                  type="text"
-                  name="search"
-                  placeholder="Name of Organization"
-                  value={filters.search}
-                  onChange={handleFilterChange}
-                />
-                <select name="region" value={filters.region} onChange={handleFilterChange}>
-                  <option value="">Region Name</option>
-                  <option value="NCR">NCR</option>
-                  <option value="Region 1">Region 1</option>
-                  <option value="Region 2">Region 2</option>
-                </select>
+        <div className="content-area org-container">
+          <div className="org-table-section">
+            {/* Tabs in Table Header */}
+            <div className="org-tabs-header">
+              <div className="org-tabs">
+                <button
+                  className={`org-tab ${activeTab === 'organization' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('organization')}
+                >
+                  Organization
+                </button>
+                <button
+                  className={`org-tab ${activeTab === 'committee' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('committee')}
+                >
+                  Committee
+                </button>
+                <button
+                  className={`org-tab ${activeTab === 'officers' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('officers')}
+                >
+                  Officers
+                </button>
               </div>
-              <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
-                ⊞ SAVE
-              </button>
             </div>
 
-            {/* List Section */}
-            <div className="org-list-section">
-              <div className="org-list-header">
-                <input type="text" placeholder="Organization Name" />
-                <select>
-                  <option value="">Region</option>
-                </select>
+            {/* Organization Tab */}
+            {activeTab === 'organization' && (
+              <div className="org-tab-content">
+                <div className="org-search-form">
+                  <input
+                    type="text"
+                    placeholder="Search organization..."
+                    value={filters.search}
+                    onChange={handleFilterChange}
+                    name="search"
+                    className="org-search-input"
+                  />
+                  <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
+                    + Add Organization
+                  </button>
+                </div>
+
+                {/* List Section */}
+                <div className="org-list-section">
+                  <div className="org-list-container">
+                    {loading ? (
+                      <div className="loading-text">Loading organizations...</div>
+                    ) : organizations.length === 0 ? (
+                      <div className="empty-text">No organizations found</div>
+                    ) : (
+                      <table className="org-table">
+                        <thead>
+                          <tr>
+                            <th>Name of Organization</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {organizations.map((org) => (
+                            <tr key={org._id}>
+                              <td>{org.name}</td>
+                              <td>
+                                <span className={`status-badge ${org.status}`}>{org.status}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="org-list-container">
-                {loading ? (
-                  <div className="loading-text">Loading organizations...</div>
-                ) : organizations.length === 0 ? (
-                  <div className="empty-text">No organizations found</div>
-                ) : (
-                  <table className="org-table">
+            )}
+
+            {/* Committee Tab */}
+            {activeTab === 'committee' && (
+              <div className="org-tab-content">
+                <div className="org-search-form">
+                  <input
+                    type="text"
+                    placeholder="Search committee..."
+                    value={filters.search}
+                    onChange={handleFilterChange}
+                    name="search"
+                    className="org-search-input"
+                  />
+                  <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
+                    + New
+                  </button>
+                </div>
+
+                <div className="org-list-section">
+                  <div className="org-list-container">
+                    <table className="org-table">
                     <thead>
                       <tr>
-                        <th>Name of Organization</th>
+                        <th>Committee Name</th>
+                        <th>Organization</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {organizations.map((org) => (
-                        <tr key={org._id}>
-                          <td>{org.name}</td>
+                      {committees.map((committee) => (
+                        <tr key={committee.id}>
+                          <td>{committee.name}</td>
+                          <td>{committee.organization}</td>
                           <td>
-                            <span className={`status-badge ${org.status}`}>{org.status}</span>
+                            <span className={`status-badge ${committee.status.toLowerCase()}`}>{committee.status}</span>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Officers Tab */}
+            {activeTab === 'officers' && (
+              <div className="org-tab-content">
+                <div className="org-search-form">
+                  <input
+                    type="text"
+                    placeholder="Search officer..."
+                    value={filters.search}
+                    onChange={handleFilterChange}
+                    name="search"
+                    className="org-search-input"
+                  />
+                  <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
+                    + New
+                  </button>
+                </div>
+
+                <div className="org-list-section">
+                  <div className="org-list-container">
+                    <table className="org-table">
+                    <thead>
+                      <tr>
+                        <th>Officer Name</th>
+                        <th>Position</th>
+                        <th>Organization</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {officers.map((officer) => (
+                        <tr key={officer.id}>
+                          <td>{officer.name}</td>
+                          <td>{officer.position}</td>
+                          <td>{officer.organization}</td>
+                          <td>
+                            <span className={`status-badge ${officer.status.toLowerCase()}`}>{officer.status}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {error && <div className="error-message">{error}</div>}
           </div>

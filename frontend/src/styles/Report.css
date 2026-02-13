@@ -4,52 +4,80 @@
   gap: 20px;
 }
 
-.report-section {
+.report-table-section {
   background: white;
-  border: 2px solid #b3e5fc;
   border-radius: 8px;
-  padding: 25px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.report-section h3 {
-  font-size: 16px;
-  font-weight: 700;
-  color: #1a3a4a;
-  margin-bottom: 20px;
-  background: #b3e5fc;
-  padding: 10px 15px;
-  margin: -25px -25px 20px -25px;
-  padding: 10px 15px;
+.report-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
-.tabs {
+.report-tabs-header::-webkit-scrollbar {
+  height: 6px;
+}
+
+.report-tabs-header::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.report-tabs-header::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+.report-tabs-header::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.report-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #ddd;
+  border-bottom: none;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  flex-wrap: nowrap;
 }
 
-.tab-btn {
+.report-tab {
   padding: 12px 20px;
-  border: none;
   background: none;
-  cursor: pointer;
+  border: none;
+  color: #666;
   font-size: 13px;
   font-weight: 600;
-  color: #666;
+  cursor: pointer;
   border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
   transition: all 0.3s;
 }
 
-.tab-btn:hover {
+.report-tab:hover {
   color: #1a3a4a;
 }
 
-.tab-btn.active {
-  color: #1a3a4a;
+.report-tab.active {
+  color: #4a9eff;
   border-bottom-color: #4a9eff;
+}
+
+.report-tab-content {
+  background: white;
+  padding: 20px 25px;
+  border-radius: 0 0 8px 8px;
+  box-sizing: border-box;
 }
 
 .filter-section {
@@ -111,6 +139,22 @@
   background: #c0392b;
 }
 
+.export-btn {
+  padding: 10px 20px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.export-btn:hover {
+  background: #229954;
+}
+
 .table-section {
   overflow-x: auto;
 }
@@ -141,6 +185,24 @@
 
 .report-table tbody tr:hover {
   background: #f9f9f9;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
+  color: #856404;
 }
 
 @media (max-width: 768px) {
