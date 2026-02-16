@@ -1,0 +1,5 @@
+username,email,password,role,fullName,department,region,active
+admin,admin@farmc.gov.ph,Admin123!,admin,John Doe,BFAR-NCR,NCR,true
+officer1,officer1@farmc.gov.ph,Officer123!,officer,Maria Santos,BFAR-NCR,NCR,true
+officer2,officer2@farmc.gov.ph,Officer123!,officer,Carlos Reyes,BFAR-Regional,Region 1,true
+viewer1,viewer1@farmc.gov.ph,Viewer123!,viewer,Ana Lopez,BFAR-Data,NCR,true

@@ -1,0 +1,222 @@
+.levels-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.levels-header {
+  padding: 0;
+  margin-bottom: 10px;
+}
+
+.levels-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a3a4a;
+  margin: 0;
+}
+
+.levels-intro {
+  background: white;
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.levels-intro h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a3a4a;
+  margin: 0 0 15px 0;
+}
+
+.levels-intro h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a3a4a;
+  margin: 30px 0 20px 0;
+}
+
+.levels-intro p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0 0 15px 0;
+}
+
+.levels-intro ul {
+  margin: 15px 0 15px 25px;
+  padding: 0;
+}
+
+.levels-intro li {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 30px auto;
+  width: fit-content;
+}
+
+.levels-grid .level-card:nth-child(4) {
+  grid-column: 1;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.levels-grid .level-card:nth-child(5) {
+  grid-column: 2;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.level-card {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9eef5 100%);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 25px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.level-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  border-color: #4a9eff;
+}
+
+.level-header {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #4a9eff;
+}
+
+.level-header h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a3a4a;
+  margin: 0;
+}
+
+.level-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #555;
+  margin: 0 0 20px 0;
+  flex: 1;
+}
+
+.download-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  background: #4a9eff;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+}
+
+.download-btn:hover {
+  background: #2b7dd4;
+  box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+}
+
+.download-btn:active {
+  transform: scale(0.98);
+}
+
+.reference-section {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 2px solid #eee;
+}
+
+.reference-section p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin: 0;
+}
+
+.download-link {
+  color: #4a9eff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.download-link:hover {
+  color: #2b7dd4;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .levels-intro {
+    padding: 25px;
+  }
+
+  .levels-header h1 {
+    font-size: 24px;
+  }
+
+  .levels-grid {
+    grid-template-columns: repeat(2, 1fr);
+    width: 100%;
+  }
+
+  .level-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .levels-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .levels-intro {
+    padding: 15px;
+  }
+
+  .levels-header h1 {
+    font-size: 20px;
+  }
+
+  .levels-intro h2 {
+    font-size: 16px;
+  }
+
+  .levels-intro h3 {
+    font-size: 14px;
+  }
+
+  .levels-intro p,
+  .levels-intro li {
+    font-size: 13px;
+  }
+
+  .level-card {
+    padding: 15px;
+  }
+
+  .level-header h4 {
+    font-size: 14px;
+  }
+
+  .level-description {
+    font-size: 12px;
+  }
+}

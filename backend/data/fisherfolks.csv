@@ -1,0 +1,7 @@
+rsbsaNumber,registrationNumber,firstName,lastName,middleName,registrationDate,province,cityMunicipality,barangay,mainLivelihood,alternativeLivelihood,status
+i26-1339013000-004,REG-001-2026,Pabie,Manahon,Casañares,2026-01-23,NCR,City of Manila,Port Area,Marine Capture,Trading,active
+i26-1339013000-004,REG-002-2026,Jomar,Cabague,Codilla,2026-01-23,NCR,City of Manila,Port Area,Marine Capture,Aquaculture,active
+i25-1339010000-001,REG-003-2025,Rene,De Jesus,Aguilar,2025-04-24,NCR,City of Manila,Tondo I/II,Marine Capture,Inland Capture,active
+i25-1339010000-001,REG-004-2025,Marife,Meneses,Balutabot,2025-03-13,NCR,City of Manila,Tondo I/II,Inland Capture,Trading,active
+i24-1339009000-002,REG-005-2024,Antonio,Garcia,Fernandez,2024-06-15,NCR,Quezon City,San Bartolome,Marine Capture,Aquaculture,active
+i24-1339009000-002,REG-006-2024,Rosa,Villanueva,Santiago,2024-07-20,NCR,Las Piñas,Barangay 194,Marine Capture,Trading,active
