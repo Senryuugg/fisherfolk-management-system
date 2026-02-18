@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 
+// Middleware for authentication and authorization
 export const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -25,3 +26,14 @@ export const authorizeRole = (allowedRoles) => {
     next();
   };
 };
+
+// Role-based permissions
+// Admin: Full access to everything
+// Viewer: Read-only access + can create user accounts for LGU users
+// LGU: Can create and read data, cannot delete or update
+
+export const canCreate = authorizeRole(['admin', 'lgu']);
+export const canUpdate = authorizeRole(['admin']);
+export const canDelete = authorizeRole(['admin']);
+export const canRead = authorizeRole(['admin', 'viewer', 'lgu']);
+export const canManageUsers = authorizeRole(['admin', 'viewer']); // Viewer can only create LGU users

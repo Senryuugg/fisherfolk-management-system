@@ -1,11 +1,11 @@
 import express from 'express';
 import Boat from '../models/Boat.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all boats with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { status, search, fisherfolkId } = req.query;
     let query = {};
@@ -30,7 +30,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single boat
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const boat = await Boat.findById(req.params.id).populate('fisherfolkId');
     if (!boat) {
@@ -43,7 +43,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create boat
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
     const boat = new Boat(req.body);
     await boat.save();
@@ -55,7 +55,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update boat
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
     const boat = await Boat.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -67,7 +67,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete boat
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
     await Boat.findByIdAndDelete(req.params.id);
     res.json({ message: 'Boat deleted' });

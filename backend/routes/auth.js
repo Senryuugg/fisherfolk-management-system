@@ -2,8 +2,11 @@ import express from 'express';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
+
+console.log('[v0] Auth routes module loaded');
 
 // Register
 router.post(
@@ -31,6 +34,17 @@ router.post(
         return res.status(400).json({ message: 'User already exists' });
       }
 
+      // Restrict role assignment based on who is creating the account
+      let assignedRole = 'viewer';
+      
+      // If role is provided in request, validate it
+      if (role) {
+        // Only admin can create admin users
+        // Viewers can only create LGU users
+        // For now, allow role assignment (will add auth check in separate endpoint)
+        assignedRole = role;
+      }
+
       // Create new user
       const user = new User({
         username,
@@ -39,7 +53,7 @@ router.post(
         fullName,
         department,
         region,
-        role: role || 'viewer',
+        role: assignedRole,
       });
 
       await user.save();
@@ -126,8 +140,84 @@ router.post(
   }
 );
 
-// Get all users
-router.get('/users', async (req, res) => {
+// Create user (Admin and Viewer can create users)
+router.post('/users', authenticateToken, authorizeRole(['admin', 'viewer']), async (req, res) => {
+  try {
+    console.log('[v0] Create user endpoint hit');
+    console.log('[v0] Request user role:', req.user?.role);
+    console.log('[v0] Request body:', req.body);
+    
+    const { username, email, password, fullName, department, region, role } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password || !fullName) {
+      console.log('[v0] Missing required fields');
+      return res.status(400).json({ message: 'All required fields must be provided' });
+    }
+
+    // Check role permissions
+    // Viewers can only create LGU users
+    if (req.user.role === 'viewer' && role !== 'lgu') {
+      return res.status(403).json({ message: 'Viewers can only create LGU user accounts' });
+    }
+
+    // Only admin can create admin users
+    if (role === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can create admin accounts' });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }],
+    });
+    if (existingUser) {
+      console.log('[v0] User already exists');
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    console.log('[v0] Creating new user with data:', {
+      username,
+      email,
+      fullName,
+      department,
+      region,
+      role: role || 'lgu',
+    });
+
+    // Create new user
+    const user = new User({
+      username,
+      email,
+      password,
+      fullName,
+      department,
+      region,
+      role: role || 'lgu',
+    });
+
+    console.log('[v0] User object created, attempting to save...');
+    await user.save();
+    console.log('[v0] User saved successfully:', user._id);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error('[v0] Error creating user:', error);
+    console.error('[v0] Error stack:', error.stack);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get all users (Admin and Viewer can view users)
+router.get('/users', authenticateToken, authorizeRole(['admin', 'viewer']), async (req, res) => {
   try {
     const users = await User.find().select('-password');
     res.json(users);
@@ -137,7 +227,7 @@ router.get('/users', async (req, res) => {
 });
 
 // Get user by ID
-router.get('/users/:id', async (req, res) => {
+router.get('/users/:id', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
@@ -149,10 +239,23 @@ router.get('/users/:id', async (req, res) => {
   }
 });
 
-// Update user
-router.put('/users/:id', async (req, res) => {
+// Update user (Admin can update anyone, Viewer and others can update themselves)
+router.put('/users/:id', authenticateToken, async (req, res) => {
   try {
     const { username, email, fullName, department, region, role, active } = req.body;
+
+    // Check permissions
+    const isAdmin = req.user.role === 'admin';
+    const isUpdatingSelf = req.user.id === req.params.id;
+
+    if (!isAdmin && !isUpdatingSelf) {
+      return res.status(403).json({ message: 'You can only update your own account' });
+    }
+
+    // Non-admin users cannot change their role or active status
+    if (!isAdmin && (role || active !== undefined)) {
+      return res.status(403).json({ message: 'You cannot change role or active status' });
+    }
 
     // Check if username or email already exists for other users
     const existingUser = await User.findOne({
@@ -170,9 +273,13 @@ router.put('/users/:id', async (req, res) => {
       fullName,
       department,
       region,
-      role,
-      active,
     };
+
+    // Only admin can update role and active status
+    if (isAdmin) {
+      updateData.role = role;
+      updateData.active = active;
+    }
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -188,8 +295,8 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-// Delete user
-router.delete('/users/:id', async (req, res) => {
+// Delete user (Admin only)
+router.delete('/users/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
 
@@ -202,5 +309,7 @@ router.delete('/users/:id', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+console.log('[v0] Auth routes configured - POST /users endpoint registered');
 
 export default router;

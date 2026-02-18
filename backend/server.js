@@ -52,8 +52,16 @@ mongoose
     process.exit(1);
   });
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[v0] ${req.method} ${req.path}`);
+  next();
+});
+
 // Routes
+console.log('[v0] Registering routes...');
 app.use('/api/auth', authRoutes);
+console.log('[v0] ✓ Auth routes mounted at /api/auth');
 app.use('/api/fisherfolk', fisherfolkRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/boats', boatsRoutes);
@@ -66,6 +74,15 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/development-levels', developmentLevelsRoutes);
 app.use('/api/maps', mapsRoutes);
 app.use('/api/reports', reportsRoutes);
+
+console.log('[v0] All routes registered successfully');
+console.log('[v0] Available endpoints:');
+console.log('[v0] - POST /api/auth/register');
+console.log('[v0] - POST /api/auth/login');
+console.log('[v0] - POST /api/auth/users (create user - protected)');
+console.log('[v0] - GET /api/auth/users (list users - protected)');
+console.log('[v0] - PUT /api/auth/users/:id (update user - protected)');
+console.log('[v0] - DELETE /api/auth/users/:id (delete user - protected)');
 
 // Health check
 app.get('/api/health', (req, res) => {

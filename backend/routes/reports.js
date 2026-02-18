@@ -174,4 +174,132 @@ router.get('/boats-gears-stats', authenticateToken, async (req, res) => {
   }
 });
 
+// Get comprehensive dashboard statistics
+router.get('/dashboard-stats', authenticateToken, async (req, res) => {
+  try {
+    console.log('[v0] Fetching dashboard statistics...');
+
+    const [fisherfolkStats, boatsStats, gearsStats, organizationCount] = await Promise.all([
+      // Fisherfolk statistics
+      Fisherfolk.aggregate([
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            byProvince: [
+              {
+                $group: {
+                  _id: '$province',
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { count: -1 } },
+            ],
+            byCity: [
+              {
+                $group: {
+                  _id: { province: '$province', city: '$cityMunicipality' },
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { count: -1 } },
+            ],
+            byLivelihood: [
+              {
+                $group: {
+                  _id: '$mainLivelihood',
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            byStatus: [
+              {
+                $group: {
+                  _id: '$status',
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            byYear: [
+              {
+                $group: {
+                  _id: { $year: '$registrationDate' },
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { _id: 1 } },
+            ],
+          },
+        },
+      ]),
+      
+      // Boats statistics
+      Boat.aggregate([
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            byYear: [
+              {
+                $group: {
+                  _id: { $year: '$registrationDate' },
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { _id: 1 } },
+            ],
+            byStatus: [
+              {
+                $group: {
+                  _id: '$status',
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+      
+      // Gears statistics
+      Gear.aggregate([
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            byType: [
+              {
+                $group: {
+                  _id: '$gearType',
+                  count: { $sum: 1 },
+                },
+              },
+              { $sort: { count: -1 } },
+            ],
+            byCondition: [
+              {
+                $group: {
+                  _id: '$condition',
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+          },
+        },
+      ]),
+      
+      // Organization count (assuming Organization model exists)
+      Fisherfolk.distinct('province').then(provinces => provinces.length),
+    ]);
+
+    console.log('[v0] Dashboard stats fetched successfully');
+    
+    res.json({
+      fisherfolk: fisherfolkStats[0],
+      boats: boatsStats[0],
+      gears: gearsStats[0],
+      organizationCount,
+    });
+  } catch (error) {
+    console.error('[v0] Error generating dashboard statistics:', error);
+    res.status(500).json({ message: 'Error generating dashboard statistics', error: error.message });
+  }
+});
+
 export default router;

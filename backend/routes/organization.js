@@ -1,11 +1,11 @@
 import express from 'express';
 import Organization from '../models/Organization.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all organizations
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { region, status } = req.query;
     let query = {};
@@ -23,7 +23,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single organization
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const org = await Organization.findById(req.params.id).populate('members');
     if (!org) {
@@ -36,7 +36,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create organization
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
     const org = new Organization(req.body);
     await org.save();
@@ -47,7 +47,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update organization
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
     const org = await Organization.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -59,7 +59,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete organization
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
     await Organization.findByIdAndDelete(req.params.id);
     res.json({ message: 'Organization deleted' });

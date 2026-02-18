@@ -132,6 +132,7 @@ export const reportsAPI = {
   getIncomeReport: (params) => api.get('/reports/income', { params }),
   getFisherfolkStats: (params) => api.get('/reports/fisherfolk-stats', { params }),
   getBoatsAndGearsStats: (params) => api.get('/reports/boats-gears-stats', { params }),
+  getDashboardStats: () => api.get('/reports/dashboard-stats'),
   exportCSV: (reportType, params) => api.get(`/reports/${reportType}/export`, { params, responseType: 'blob' }),
 };
 

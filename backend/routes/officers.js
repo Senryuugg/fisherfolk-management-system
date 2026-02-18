@@ -1,11 +1,11 @@
 import express from 'express';
 import Officer from '../models/Officer.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all officers with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { organizationId, status, search } = req.query;
     let query = {};
@@ -29,7 +29,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single officer
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const officer = await Officer.findById(req.params.id).populate('organizationId');
     if (!officer) {
@@ -42,7 +42,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create officer
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
     const officer = new Officer(req.body);
     await officer.save();
@@ -54,7 +54,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update officer
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
     const officer = await Officer.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -66,7 +66,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete officer
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
     await Officer.findByIdAndDelete(req.params.id);
     res.json({ message: 'Officer deleted' });

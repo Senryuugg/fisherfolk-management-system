@@ -1,11 +1,11 @@
 import express from 'express';
 import Committee from '../models/Committee.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all committees with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { organizationId, status, search } = req.query;
     let query = {};
@@ -29,7 +29,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single committee
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const committee = await Committee.findById(req.params.id).populate('organizationId');
     if (!committee) {
@@ -42,7 +42,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create committee
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
     const committee = new Committee(req.body);
     await committee.save();
@@ -54,7 +54,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update committee
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
     const committee = await Committee.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -66,7 +66,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete committee
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
     await Committee.findByIdAndDelete(req.params.id);
     res.json({ message: 'Committee deleted' });

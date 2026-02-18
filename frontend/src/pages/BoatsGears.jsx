@@ -2,6 +2,7 @@
 
 import { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { canCreate } from '../utils/permissions';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import '../styles/BoatsGears.css';
@@ -174,9 +175,11 @@ export default function BoatsGears() {
             <div className="tab-content">
               <div className="table-header">
                 <h3>List of Registered Boats:</h3>
-                <button className="add-btn" onClick={() => { setModalTab('boats'); setShowAddModal(true); }}>
-                  + Add Boats/Gears
-                </button>
+                {canCreate(user) && (
+                  <button className="add-btn" onClick={() => { setModalTab('boats'); setShowAddModal(true); }}>
+                    + Add Boats/Gears
+                  </button>
+                )}
               </div>
 
               <div className="table-controls">
@@ -246,9 +249,11 @@ export default function BoatsGears() {
             <div className="tab-content">
               <div className="table-header">
                 <h3>List of Registered Gears:</h3>
-                <button className="add-btn" onClick={() => { setModalTab('gears'); setShowAddModal(true); }}>
-                  + Add Boats/Gears
-                </button>
+                {canCreate(user) && (
+                  <button className="add-btn" onClick={() => { setModalTab('gears'); setShowAddModal(true); }}>
+                    + Add Boats/Gears
+                  </button>
+                )}
               </div>
               <div className="table-controls">
                 <div className="items-per-page">

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { reportsAPI, organizationAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import {
@@ -36,63 +37,128 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [organizationCount, setOrganizationCount] = useState(0);
 
   if (!user) {
     navigate('/login');
     return null;
   }
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      console.log('[v0] Fetching dashboard data...');
+      const [statsResponse, orgResponse] = await Promise.all([
+        reportsAPI.getDashboardStats(),
+        organizationAPI.getAll(),
+      ]);
+      
+      console.log('[v0] Dashboard stats:', statsResponse.data);
+      console.log('[v0] Organizations:', orgResponse.data);
+      
+      setDashboardData(statsResponse.data);
+      setOrganizationCount(orgResponse.data.length);
+    } catch (error) {
+      console.error('[v0] Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  // Gender Distribution Data
-  const genderData = {
-    labels: ['Male', 'Female'],
+  if (loading || !dashboardData) {
+    return (
+      <div className="dashboard-container">
+        <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} />
+        <div className="main-content">
+          <Header title="DASHBOARD" user={user} />
+          <div className="content-area">
+            <p>Loading dashboard data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Extract data from API response
+  const totalFisherfolk = dashboardData.fisherfolk.total[0]?.count || 0;
+  const totalBoats = dashboardData.boats.total[0]?.count || 0;
+  const totalGears = dashboardData.gears.total[0]?.count || 0;
+  
+  // Province distribution for charts
+  const provinceData = dashboardData.fisherfolk.byProvince || [];
+  const topProvinces = provinceData.slice(0, 6);
+  
+  // Livelihood distribution
+  const livelihoodData = dashboardData.fisherfolk.byLivelihood || [];
+  
+  // Boats by year
+  const boatsByYear = dashboardData.boats.byYear || [];
+  
+  // Gear types
+  const gearTypes = dashboardData.gears.byType || [];
+  const topGearTypes = gearTypes.slice(0, 6);
+
+  // Livelihood Distribution Data
+  const livelihoodChartData = {
+    labels: livelihoodData.map(item => item._id || 'Unknown'),
     datasets: [
       {
-        label: 'Fisherfolk by Gender',
-        data: [1245, 657],
-        backgroundColor: ['#4A9EFF', '#FF6B9D'],
+        label: 'Fisherfolk by Livelihood',
+        data: livelihoodData.map(item => item.count),
+        backgroundColor: ['#4A9EFF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
         borderWidth: 0,
       },
     ],
   };
 
-  // Age Bracket Data
-  const ageBracketData = {
-    labels: ['18-25', '26-35', '36-45', '46-55', '56-65', '65+'],
+  // Fisherfolk by Province Data
+  const provinceChartData = {
+    labels: topProvinces.map(item => item._id || 'Unknown'),
     datasets: [
       {
         label: 'Fisherfolk Count',
-        data: [234, 456, 589, 387, 189, 47],
+        data: topProvinces.map(item => item.count),
         backgroundColor: '#4A9EFF',
         borderRadius: 6,
       },
     ],
   };
 
-  // Children Data (Number of children per household)
-  const childrenData = {
-    labels: ['0', '1-2', '3-4', '5+'],
+  // Status Distribution
+  const statusData = dashboardData.fisherfolk.byStatus || [];
+  const activeCount = statusData.find(s => s._id === 'active')?.count || 0;
+  const inactiveCount = statusData.find(s => s._id === 'inactive')?.count || 0;
+  
+  const statusChartData = {
+    labels: ['Active', 'Inactive'],
     datasets: [
       {
-        label: 'Households',
-        data: [123, 678, 456, 189],
-        backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+        label: 'Fisherfolk Status',
+        data: [activeCount, inactiveCount],
+        backgroundColor: ['#10B981', '#94A3B8'],
         borderWidth: 0,
       },
     ],
   };
 
-  // Monthly Income Data
-  const monthlyIncomeData = {
-    labels: ['Below 5k', '5k-10k', '10k-15k', '15k-20k', 'Above 20k'],
+  // Gear Types Data
+  const gearTypesChartData = {
+    labels: topGearTypes.map(item => item._id || 'Unknown'),
     datasets: [
       {
-        label: 'Fisherfolk Count',
-        data: [234, 567, 489, 345, 267],
+        label: 'Gear Count',
+        data: topGearTypes.map(item => item.count),
         backgroundColor: '#10B981',
         borderRadius: 6,
       },
@@ -101,11 +167,11 @@ export default function Dashboard() {
 
   // Boats Registered Per Year
   const boatsPerYearData = {
-    labels: ['2019', '2020', '2021', '2022', '2023', '2024'],
+    labels: boatsByYear.map(item => item._id?.toString() || 'Unknown'),
     datasets: [
       {
         label: 'Boats Registered',
-        data: [145, 178, 210, 234, 267, 289],
+        data: boatsByYear.map(item => item.count),
         borderColor: '#4A9EFF',
         backgroundColor: 'rgba(74, 158, 255, 0.1)',
         tension: 0.4,
@@ -116,41 +182,20 @@ export default function Dashboard() {
     ],
   };
 
-  // Fishing Gear Types Per Province
-  const fishingGearData = {
-    labels: ['Manila', 'Caloocan', 'Quezon City', 'Pasay', 'Navotas', 'Malabon'],
+  // Fisherfolk Registration Per Year
+  const fisherfolkByYear = dashboardData.fisherfolk.byYear || [];
+  const fisherfolkPerYearData = {
+    labels: fisherfolkByYear.map(item => item._id?.toString() || 'Unknown'),
     datasets: [
       {
-        label: 'Hook & Line',
-        data: [120, 85, 95, 67, 145, 98],
-        backgroundColor: '#4A9EFF',
-      },
-      {
-        label: 'Gill Net',
-        data: [89, 67, 78, 56, 123, 89],
-        backgroundColor: '#10B981',
-      },
-      {
-        label: 'Fish Trap',
-        data: [45, 34, 56, 23, 78, 56],
-        backgroundColor: '#F59E0B',
-      },
-    ],
-  };
-
-  // Boat Types Per Province (Motorized vs Non-Motorized)
-  const boatTypesData = {
-    labels: ['Manila', 'Caloocan', 'Quezon City', 'Pasay', 'Navotas', 'Malabon'],
-    datasets: [
-      {
-        label: 'Motorized',
-        data: [178, 134, 156, 98, 234, 167],
-        backgroundColor: '#4A9EFF',
-      },
-      {
-        label: 'Non-Motorized',
-        data: [89, 67, 78, 45, 123, 89],
-        backgroundColor: '#94A3B8',
+        label: 'Fisherfolk Registered',
+        data: fisherfolkByYear.map(item => item.count),
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointRadius: 5,
+        pointBackgroundColor: '#10B981',
       },
     ],
   };
@@ -211,8 +256,8 @@ export default function Dashboard() {
               <div className="stat-card-border"></div>
               <div className="stat-card-content">
                 <h3>Total No. of Registered Fisherfolk</h3>
-                <p className="stat-number">1,902</p>
-                <small>4.2 increase from last week</small>
+                <p className="stat-number">{totalFisherfolk.toLocaleString()}</p>
+                <small>{activeCount} active, {inactiveCount} inactive</small>
               </div>
             </div>
             
@@ -220,7 +265,7 @@ export default function Dashboard() {
               <div className="stat-card-border"></div>
               <div className="stat-card-content">
                 <h3>Total No. of C/MFARMCs established</h3>
-                <p className="stat-number">45</p>
+                <p className="stat-number">{totalBoats.toLocaleString()}</p>
                 <small>Across all regions</small>
               </div>
             </div>
@@ -229,7 +274,7 @@ export default function Dashboard() {
               <div className="stat-card-border"></div>
               <div className="stat-card-content">
                 <h3>Total No. of Registered Fisherfolk Organizations/ Cooperative</h3>
-                <p className="stat-number">823</p>
+                <p className="stat-number">{organizationCount.toLocaleString()}</p>
                 <small>Increase this month</small>
               </div>
             </div>
@@ -237,30 +282,30 @@ export default function Dashboard() {
 
           <div className="charts-row">
             <div className="chart-container">
-              <h4>Gender Distribution</h4>
+              <h4>Livelihood Distribution</h4>
               <div className="chart-wrapper">
-                <Doughnut data={genderData} options={doughnutOptions} />
+                <Doughnut data={livelihoodChartData} options={doughnutOptions} />
               </div>
             </div>
             <div className="chart-container">
-              <h4>Age Bracket Distribution</h4>
+              <h4>Fisherfolk by Province (Top 6)</h4>
               <div className="chart-wrapper">
-                <Bar data={ageBracketData} options={chartOptions} />
+                <Bar data={provinceChartData} options={chartOptions} />
               </div>
             </div>
           </div>
 
           <div className="charts-row">
             <div className="chart-container">
-              <h4>Number of Children per Household</h4>
+              <h4>Status Distribution</h4>
               <div className="chart-wrapper">
-                <Doughnut data={childrenData} options={doughnutOptions} />
+                <Doughnut data={statusChartData} options={doughnutOptions} />
               </div>
             </div>
             <div className="chart-container">
-              <h4>Monthly Income Distribution</h4>
+              <h4>Fishing Gear Types (Top 6)</h4>
               <div className="chart-wrapper">
-                <Bar data={monthlyIncomeData} options={chartOptions} />
+                <Bar data={gearTypesChartData} options={chartOptions} />
               </div>
             </div>
           </div>
@@ -273,18 +318,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="chart-container">
-              <h4>Fishing Gear Types Per Province</h4>
+              <h4>Fisherfolk Registered Per Year</h4>
               <div className="chart-wrapper">
-                <Bar data={fishingGearData} options={chartOptions} />
-              </div>
-            </div>
-          </div>
-
-          <div className="charts-row-single">
-            <div className="chart-container">
-              <h4>Boat Types Per Province (Motorized vs Non-Motorized)</h4>
-              <div className="chart-wrapper">
-                <Bar data={boatTypesData} options={chartOptions} />
+                <Line data={fisherfolkPerYearData} options={chartOptions} />
               </div>
             </div>
           </div>

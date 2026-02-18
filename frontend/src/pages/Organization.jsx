@@ -3,6 +3,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { organizationAPI } from '../services/api';
+import { canCreate } from '../utils/permissions';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import '../styles/Organization.css';
@@ -129,12 +130,14 @@ export default function Organization() {
                     value={filters.search}
                     onChange={handleFilterChange}
                     name="search"
-                    className="org-search-input"
-                  />
+                  className="org-search-input"
+                />
+                {canCreate(user) && (
                   <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
                     + Add Organization
                   </button>
-                </div>
+                )}
+              </div>
 
                 {/* List Section */}
                 <div className="org-list-section">

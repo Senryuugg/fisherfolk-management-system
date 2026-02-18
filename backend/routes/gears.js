@@ -1,11 +1,11 @@
 import express from 'express';
 import Gear from '../models/Gear.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all gears with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { status, search, fisherfolkId, condition } = req.query;
     let query = {};
@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single gear
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const gear = await Gear.findById(req.params.id).populate('fisherfolkId');
     if (!gear) {
@@ -44,7 +44,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create gear
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
     const gear = new Gear(req.body);
     await gear.save();
@@ -56,7 +56,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update gear
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
     const gear = await Gear.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -68,7 +68,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete gear
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
     await Gear.findByIdAndDelete(req.params.id);
     res.json({ message: 'Gear deleted' });

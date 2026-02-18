@@ -5,12 +5,13 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import { canCreateUsers, canDelete, canUpdate, isAdmin, isViewer, ROLES, getRoleDisplayName } from '../utils/permissions';
 import '../styles/ManageAccount.css';
 
 const API_URL = 'http://localhost:5000/api';
 
 export default function ManageAccount() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, updateUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('manage-account');
   const [users, setUsers] = useState([]);
@@ -26,7 +27,7 @@ export default function ManageAccount() {
     email: '',
     password: '',
     fullName: '',
-    role: 'viewer',
+    role: 'lgu',
     department: 'bfar',
     region: '',
     active: true,
@@ -45,7 +46,12 @@ export default function ManageAccount() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/auth/users`);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/auth/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data);
@@ -72,7 +78,7 @@ export default function ManageAccount() {
       email: '',
       password: '',
       fullName: '',
-      role: 'viewer',
+      role: 'lgu',
       department: 'bfar',
       region: '',
       active: true,
@@ -134,20 +140,57 @@ export default function ManageAccount() {
           body.password = formData.password;
         }
       } else {
-        url = `${API_URL}/auth/register`;
+        // Use the protected user creation endpoint
+        url = `${API_URL}/auth/users`;
         method = 'POST';
         body = formData;
       }
 
+      const token = localStorage.getItem('token');
+
+      console.log('[v0] Creating/updating user with data:', body);
+      console.log('[v0] Request URL:', url);
+
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(body),
       });
 
+      console.log('[v0] Response status:', response.status);
+      console.log('[v0] Response headers:', response.headers.get('content-type'));
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[v0] Non-JSON response received:', text.substring(0, 500));
+        throw new Error(`Server returned non-JSON response. Status: ${response.status}. This usually means the API endpoint is not found or there's a server error.`);
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('[v0] Error response:', errorData);
         throw new Error(errorData.message || 'Failed to save user');
+      }
+
+      const updatedUserData = await response.json();
+      console.log('[v0] User update response:', updatedUserData);
+
+      // If editing current user, update the AuthContext
+      if (isEditing && user && (editingId === user._id || editingId === user.id)) {
+        console.log('[v0] Updating current user in AuthContext');
+        updateUser({
+          username: body.username,
+          email: body.email,
+          fullName: body.fullName,
+          role: body.role,
+          department: body.department,
+          region: body.region,
+        });
       }
 
       setSuccessMessage(isEditing ? 'User updated successfully' : 'User added successfully');
@@ -161,8 +204,12 @@ export default function ManageAccount() {
   const handleDeleteClick = async (id) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
+        const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/auth/users/${id}`, {
           method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         });
 
         if (!response.ok) throw new Error('Failed to delete user');
@@ -195,9 +242,11 @@ export default function ManageAccount() {
             <div>
               <div className="manage-header">
                 <h2>User Management</h2>
-                <button className="add-btn" onClick={handleAddClick}>
-                  + Add New User
-                </button>
+                {canCreateUsers(user) && (
+                  <button className="add-btn" onClick={handleAddClick}>
+                    + Add New User
+                  </button>
+                )}
               </div>
 
               {loading ? (
@@ -226,7 +275,7 @@ export default function ManageAccount() {
                           <td>{userData.email}</td>
                           <td>{userData.fullName}</td>
                           <td>
-                            <span className="role-badge">{userData.role}</span>
+                            <span className="role-badge">{getRoleDisplayName(userData.role)}</span>
                           </td>
                           <td>{userData.department}</td>
                           <td>{userData.region || '-'}</td>
@@ -236,18 +285,22 @@ export default function ManageAccount() {
                             </span>
                           </td>
                           <td>
-                            <button
-                              className="edit-btn"
-                              onClick={() => handleEditClick(userData)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="delete-btn"
-                              onClick={() => handleDeleteClick(userData._id)}
-                            >
-                              Delete
-                            </button>
+                            {(isAdmin(user) || user.id === userData._id || user._id === userData._id) && (
+                              <button
+                                className="edit-btn"
+                                onClick={() => handleEditClick(userData)}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDelete(user) && (
+                              <button
+                                className="delete-btn"
+                                onClick={() => handleDeleteClick(userData._id)}
+                              >
+                                Delete
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -313,11 +366,14 @@ export default function ManageAccount() {
 
                   <div className="form-group">
                     <label>Role</label>
-                    <select name="role" value={formData.role} onChange={handleFormChange}>
-                      <option value="admin">Admin</option>
-                      <option value="officer">Officer</option>
-                      <option value="viewer">Viewer</option>
+                    <select name="role" value={formData.role} onChange={handleFormChange} disabled={isViewer(user)}>
+                      {isAdmin(user) && <option value={ROLES.ADMIN}>Super Admin</option>}
+                      {isAdmin(user) && <option value={ROLES.VIEWER}>Viewer</option>}
+                      <option value={ROLES.LGU}>LGU User</option>
                     </select>
+                    {isViewer(user) && (
+                      <small className="help-text">Viewers can only create LGU user accounts</small>
+                    )}
                   </div>
 
                   <div className="form-group">

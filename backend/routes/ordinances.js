@@ -1,11 +1,11 @@
 import express from 'express';
 import OrdinanceResolution from '../models/OrdinanceResolution.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all ordinances/resolutions with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { type, status, organizationId, search } = req.query;
     let query = {};
@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single ordinance/resolution
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const document = await OrdinanceResolution.findById(req.params.id).populate('organizationId');
     if (!document) {
@@ -44,7 +44,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create ordinance/resolution
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
     const document = new OrdinanceResolution(req.body);
     await document.save();
@@ -56,7 +56,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update ordinance/resolution
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
     const document = await OrdinanceResolution.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -68,7 +68,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete ordinance/resolution
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
     await OrdinanceResolution.findByIdAndDelete(req.params.id);
     res.json({ message: 'Document deleted' });

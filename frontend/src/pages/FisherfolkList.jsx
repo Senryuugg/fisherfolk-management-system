@@ -3,6 +3,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { fisherfolkAPI } from '../services/api';
+import { canCreate } from '../utils/permissions';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import '../styles/FisherfolkList.css';
@@ -165,9 +166,11 @@ export default function FisherfolkList() {
             <div className="tab-content">
               <div className="table-header">
                 <h3>List of Fisherfolk:</h3>
-                <button className="add-btn" onClick={() => setShowAddModal(true)}>
-                  + Add Fisherfolk
-                </button>
+                {canCreate(user) && (
+                  <button className="add-btn" onClick={() => setShowAddModal(true)}>
+                    + Add Fisherfolk
+                  </button>
+                )}
               </div>
 
               <div className="table-controls">
