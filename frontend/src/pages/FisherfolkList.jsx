@@ -39,49 +39,6 @@ export default function FisherfolkList() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeTab, setActiveTab] = useState('active');
 
-  // Temporary mock data for testing
-  const tempFisherfolk = [
-    {
-      _id: '1',
-      rsbsaNumber: 'RSBSA-001',
-      registrationNumber: 'REG-001',
-      firstName: 'Juan',
-      lastName: 'Dela Cruz',
-      middleName: 'Santos',
-      registrationDate: '2026-01-15',
-      province: 'Quezon',
-      cityMunicipality: 'Quezon City',
-      barangay: 'Tatalon',
-      status: 'active',
-    },
-    {
-      _id: '2',
-      rsbsaNumber: 'RSBSA-002',
-      registrationNumber: 'REG-002',
-      firstName: 'Maria',
-      lastName: 'Santos',
-      middleName: 'Garcia',
-      registrationDate: '2026-01-10',
-      province: 'Manila',
-      cityMunicipality: 'Manila',
-      barangay: 'Barangay 1',
-      status: 'active',
-    },
-    {
-      _id: '3',
-      rsbsaNumber: 'RSBSA-003',
-      registrationNumber: 'REG-003',
-      firstName: 'Pedro',
-      lastName: 'Reyes',
-      middleName: 'Lopez',
-      registrationDate: '2025-12-20',
-      province: 'Cavite',
-      cityMunicipality: 'Kawit',
-      barangay: 'Magdalo',
-      status: 'inactive',
-    },
-  ];
-
   // Fetch fisherfolk data
   useEffect(() => {
     fetchFisherfolk();
@@ -90,12 +47,6 @@ export default function FisherfolkList() {
   const fetchFisherfolk = async () => {
     setLoading(true);
     try {
-      // Using temporary mock data for now
-      console.log("[v0] Loading temporary fisherfolk data:", tempFisherfolk);
-      setFisherfolk(tempFisherfolk);
-      setError('');
-      
-      /* Original API call - will use when API is ready
       const response = await fisherfolkAPI.getAll({
         search: filters.search,
         province: filters.province,
@@ -103,11 +54,16 @@ export default function FisherfolkList() {
         barangay: filters.barangay,
         status: filters.status,
       });
-      setFisherfolk(response.data);
-      */
+      console.log("[v0] Fisherfolk API response:", response);
+      console.log("[v0] Fisherfolk count received:", response.data?.length || 0);
+      console.log("[v0] First 3 records:", response.data?.slice(0, 3));
+      setFisherfolk(response.data || []);
+      setError('');
     } catch (err) {
-      setError('Failed to load fisherfolk data');
-      console.error(err);
+      setError(`Failed to load fisherfolk data: ${err.response?.data?.message || err.message}`);
+      console.error("[v0] Error fetching fisherfolk:", err);
+      console.error("[v0] Error response:", err.response);
+      setFisherfolk([]);
     } finally {
       setLoading(false);
     }

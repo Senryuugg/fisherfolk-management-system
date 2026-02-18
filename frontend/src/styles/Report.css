@@ -157,10 +157,12 @@
 
 .table-section {
   overflow-x: auto;
+  width: 100%;
 }
 
 .report-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }

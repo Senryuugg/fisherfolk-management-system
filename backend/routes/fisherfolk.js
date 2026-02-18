@@ -22,11 +22,12 @@ router.get('/', authenticateToken, async (req, res) => {
       ];
     }
 
-    const fisherfolk = await Fisherfolk.find(query)
-      .populate('boats')
-      .limit(50);
+    console.log('[v0] Fisherfolk query:', query);
+    const fisherfolk = await Fisherfolk.find(query).populate('boats');
+    console.log('[v0] Fisherfolk count returned:', fisherfolk.length);
     res.json(fisherfolk);
   } catch (error) {
+    console.error('[v0] Error fetching fisherfolk:', error);
     res.status(500).json({ message: 'Error fetching fisherfolk', error: error.message });
   }
 });

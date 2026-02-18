@@ -141,11 +141,12 @@
 .org-list-container {
   background: #f9f9f9;
   border-radius: 6px;
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .org-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
