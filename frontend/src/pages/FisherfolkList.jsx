@@ -79,6 +79,7 @@ export default function FisherfolkList() {
       return;
     }
 
+    setLoading(true);
     try {
       const newFisherfolk = {
         rsbsaNumber: formData.rsbsaNumber,
@@ -86,7 +87,7 @@ export default function FisherfolkList() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         middleName: formData.middleName,
-        registrationDate: formData.registrationDate || new Date().toLocaleDateString(),
+        registrationDate: formData.registrationDate || new Date().toISOString(),
         province: formData.province,
         cityMunicipality: formData.cityMunicipality,
         barangay: formData.barangay,
@@ -95,15 +96,14 @@ export default function FisherfolkList() {
         status: formData.status,
       };
       
-      // Add to local state immediately
-      setFisherfolk([...fisherfolk, { ...newFisherfolk, _id: Date.now().toString() }]);
+      console.log('[v0] Creating new fisherfolk:', newFisherfolk);
       
-      // Also try to save to backend
-      try {
-        await fisherfolkAPI.create(newFisherfolk);
-      } catch (backendErr) {
-        console.error('Backend save failed, but added to local state', backendErr);
-      }
+      // Save to backend first
+      const response = await fisherfolkAPI.create(newFisherfolk);
+      console.log('[v0] Fisherfolk created successfully:', response.data);
+      
+      // Only add to local state after successful save
+      setFisherfolk([...fisherfolk, response.data]);
       
       setShowAddModal(false);
       setFormData({
@@ -121,9 +121,15 @@ export default function FisherfolkList() {
         status: 'active',
       });
       setError('');
+      
+      // Refresh data from server to ensure sync
+      await fetchFisherfolk();
     } catch (err) {
-      setError('Failed to create fisherfolk');
-      console.error(err);
+      console.error('[v0] Error creating fisherfolk:', err);
+      console.error('[v0] Error response:', err.response?.data);
+      setError(`Failed to create fisherfolk: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+// User model with updated role enum (admin, lgu, viewer)
 const userSchema = new mongoose.Schema(
   {
     username: {
@@ -21,7 +22,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'officer', 'viewer'],
+      enum: ['admin', 'lgu', 'viewer'], // Updated: 'officer' changed to 'lgu'
       default: 'viewer',
     },
     fullName: {

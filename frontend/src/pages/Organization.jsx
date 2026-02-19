@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { organizationAPI } from '../services/api';
+import { organizationAPI, committeesAPI, officersAPI } from '../services/api';
 import { canCreate } from '../utils/permissions';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -13,14 +13,8 @@ export default function Organization() {
   const [currentPage, setCurrentPage] = useState('organization');
   const [activeTab, setActiveTab] = useState('organization');
   const [organizations, setOrganizations] = useState([]);
-  const [committees, setCommittees] = useState([
-    { id: 1, name: 'Fisheries Committee', organization: 'BFAR', status: 'Active' },
-    { id: 2, name: 'Conservation Committee', organization: 'BFAR', status: 'Active' },
-  ]);
-  const [officers, setOfficers] = useState([
-    { id: 1, name: 'Juan Dela Cruz', position: 'Chairman', organization: 'BFAR', status: 'Active' },
-    { id: 2, name: 'Maria Santos', position: 'Vice Chairman', organization: 'BFAR', status: 'Active' },
-  ]);
+  const [committees, setCommittees] = useState([]);
+  const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -41,7 +35,42 @@ export default function Organization() {
 
   useEffect(() => {
     fetchOrganizations();
-  }, [filters]);
+    if (activeTab === 'committee') {
+      fetchCommittees();
+    } else if (activeTab === 'officers') {
+      fetchOfficers();
+    }
+  }, [filters, activeTab]);
+
+  const fetchCommittees = async () => {
+    setLoading(true);
+    try {
+      const response = await committeesAPI.getAll(filters);
+      console.log('[v0] Committees data fetched:', response.data);
+      setCommittees(response.data || []);
+      setError('');
+    } catch (err) {
+      console.error('[v0] Error fetching committees:', err);
+      setCommittees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOfficers = async () => {
+    setLoading(true);
+    try {
+      const response = await officersAPI.getAll(filters);
+      console.log('[v0] Officers data fetched:', response.data);
+      setOfficers(response.data || []);
+      setError('');
+    } catch (err) {
+      console.error('[v0] Error fetching officers:', err);
+      setOfficers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchOrganizations = async () => {
     setLoading(true);

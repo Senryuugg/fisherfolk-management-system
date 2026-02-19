@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { boatsAPI, gearsAPI } from '../services/api';
 import { canCreate } from '../utils/permissions';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
@@ -13,6 +14,8 @@ export default function BoatsGears() {
   const [activeTab, setActiveTab] = useState('boats');
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalTab, setModalTab] = useState('boats');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     boatName: '',
     mfbrNo: '',
@@ -35,30 +38,47 @@ export default function BoatsGears() {
     search: '',
     status: '',
   });
-  const [boatsData, setBoatsData] = useState([
-    {
-      id: 1,
-      frsNo: '',
-      mfbrNo: 'i26-1339130000-004',
-      fisherfolkName: 'PABIE MANAHON',
-      boatName: 'Boat 1',
-      address: 'NCR, City of Manila, First District',
-      registrationDate: '01/23/2026',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      frsNo: '',
-      mfbrNo: 'i26-1339130000-005',
-      fisherfolkName: 'JOMAR CABAGUE',
-      boatName: 'Boat 2',
-      address: 'NCR, City of Manila, First District',
-      registrationDate: '01/23/2026',
-      status: 'Active',
-    },
-  ]);
+  const [boatsData, setBoatsData] = useState([]);
   const [gearsData, setGearsData] = useState([]);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Fetch boats and gears data on mount
+  useEffect(() => {
+    fetchBoats();
+    fetchGears();
+  }, []);
+
+  const fetchBoats = async () => {
+    setLoading(true);
+    try {
+      const response = await boatsAPI.getAll(filters);
+      console.log('[v0] Boats data fetched:', response.data);
+      setBoatsData(response.data || []);
+      setError('');
+    } catch (err) {
+      console.error('[v0] Error fetching boats:', err);
+      setError(`Failed to load boats: ${err.response?.data?.message || err.message}`);
+      setBoatsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchGears = async () => {
+    setLoading(true);
+    try {
+      const response = await gearsAPI.getAll(filters);
+      console.log('[v0] Gears data fetched:', response.data);
+      setGearsData(response.data || []);
+      setError('');
+    } catch (err) {
+      console.error('[v0] Error fetching gears:', err);
+      setError(`Failed to load gears: ${err.response?.data?.message || err.message}`);
+      setGearsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -71,79 +91,110 @@ export default function BoatsGears() {
 
   // Filter boats data based on search inputs
   const filteredBoats = boatsData.filter((boat) => {
+    if (!filters.search) return true;
     const searchLower = filters.search.toLowerCase();
-    const matchesMfbr = boat.mfbrNo.toLowerCase().includes(searchLower);
-    const matchesName = boat.fisherfolkName.toLowerCase().includes(searchLower);
-    const matchesBoatName = boat.boatName.toLowerCase().includes(searchLower);
+    const matchesMfbr = boat.mfbrNo?.toLowerCase().includes(searchLower) || false;
+    const matchesName = boat.fisherfolkName?.toLowerCase().includes(searchLower) || false;
+    const matchesBoatName = boat.boatName?.toLowerCase().includes(searchLower) || false;
     const matchesSearch = matchesMfbr || matchesName || matchesBoatName;
     return matchesSearch;
   });
 
   // Filter gears data based on search inputs
   const filteredGears = gearsData.filter((gear) => {
+    if (!filters.search) return true;
     const searchLower = filters.search.toLowerCase();
-    const matchesName = gear.fisherfolkName.toLowerCase().includes(searchLower);
-    const matchesType = gear.gearType.toLowerCase().includes(searchLower);
+    const matchesName = gear.fisherfolkName?.toLowerCase().includes(searchLower) || false;
+    const matchesType = gear.gearType?.toLowerCase().includes(searchLower) || false;
     return matchesName || matchesType;
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     
-    if (modalTab === 'boats') {
-      if (!formData.mfbrNo || !formData.fisherfolkName || !formData.boatName) {
-        alert('Please fill in all required fields');
-        return;
+    try {
+      if (modalTab === 'boats') {
+        if (!formData.mfbrNo || !formData.fisherfolkName || !formData.boatName) {
+          setError('Please fill in all required fields');
+          setLoading(false);
+          return;
+        }
+        const newBoat = {
+          mfbrNo: formData.mfbrNo,
+          fisherfolkName: formData.fisherfolkName,
+          boatName: formData.boatName,
+          boatType: formData.boatType,
+          engineType: formData.engineType,
+          grossTonnage: formData.grossTonnage,
+          netTonnage: formData.netTonnage,
+          homePort: formData.homePort,
+          province: formData.province,
+          cityMunicipality: formData.cityMunicipality,
+          barangay: formData.barangay,
+          registrationDate: formData.registrationDate || new Date().toISOString(),
+          status: formData.status,
+        };
+        
+        console.log('[v0] Creating new boat:', newBoat);
+        const response = await boatsAPI.create(newBoat);
+        console.log('[v0] Boat created successfully:', response.data);
+        
+        // Refresh boats data
+        await fetchBoats();
+        
+      } else if (modalTab === 'gears') {
+        if (!formData.gearType || !formData.fisherfolkName) {
+          setError('Please fill in all required fields');
+          setLoading(false);
+          return;
+        }
+        const newGear = {
+          mfbrNo: formData.mfbrNo,
+          fisherfolkName: formData.fisherfolkName,
+          gearType: formData.gearType,
+          gearClassification: formData.gearClassification,
+          quantity: formData.quantity || 0,
+          registrationDate: formData.registrationDate || new Date().toISOString(),
+          status: formData.status,
+        };
+        
+        console.log('[v0] Creating new gear:', newGear);
+        const response = await gearsAPI.create(newGear);
+        console.log('[v0] Gear created successfully:', response.data);
+        
+        // Refresh gears data
+        await fetchGears();
       }
-      const newBoat = {
-        id: boatsData.length + 1,
-        frsNo: '',
-        mfbrNo: formData.mfbrNo,
-        fisherfolkName: formData.fisherfolkName,
-        boatName: formData.boatName,
-        address: `${formData.barangay}, ${formData.cityMunicipality}, ${formData.province}`,
-        registrationDate: formData.registrationDate || new Date().toLocaleDateString(),
-        status: formData.status === 'active' ? 'Active' : 'Inactive',
-      };
-      setBoatsData([...boatsData, newBoat]);
-    } else if (modalTab === 'gears') {
-      if (!formData.gearType || !formData.fisherfolkName) {
-        alert('Please fill in all required fields');
-        return;
-      }
-      const newGear = {
-        id: gearsData.length + 1,
-        frsNo: '',
-        mfbrNo: formData.mfbrNo,
-        fisherfolkName: formData.fisherfolkName,
-        gearType: formData.gearType,
-        quantity: formData.quantity || 0,
-        registrationDate: formData.registrationDate || new Date().toLocaleDateString(),
-        status: formData.status === 'active' ? 'Active' : 'Inactive',
-      };
-      setGearsData([...gearsData, newGear]);
-    }
 
-    // Reset form and close modal
-    setFormData({
-      boatName: '',
-      mfbrNo: '',
-      fisherfolkName: '',
-      boatType: '',
-      engineType: '',
-      grossTonnage: '',
-      netTonnage: '',
-      registrationDate: '',
-      homePort: '',
-      province: '',
-      cityMunicipality: '',
-      barangay: '',
-      status: 'active',
-      gearType: '',
-      gearClassification: '',
-      quantity: '',
-    });
-    setShowAddModal(false);
+      // Reset form and close modal
+      setFormData({
+        boatName: '',
+        mfbrNo: '',
+        fisherfolkName: '',
+        boatType: '',
+        engineType: '',
+        grossTonnage: '',
+        netTonnage: '',
+        registrationDate: '',
+        homePort: '',
+        province: '',
+        cityMunicipality: '',
+        barangay: '',
+        status: 'active',
+        gearType: '',
+        gearClassification: '',
+        quantity: '',
+      });
+      setShowAddModal(false);
+      setError('');
+    } catch (err) {
+      console.error('[v0] Error saving data:', err);
+      console.error('[v0] Error response:', err.response?.data);
+      setError(`Failed to save: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -218,23 +269,31 @@ export default function BoatsGears() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredBoats.length === 0 ? (
+                    {loading ? (
                       <tr>
                         <td colSpan="7" className="empty-cell">
-                          No boats found
+                          Loading boats...
+                        </td>
+                      </tr>
+                    ) : filteredBoats.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="empty-cell">
+                          {error ? error : 'No boats found'}
                         </td>
                       </tr>
                     ) : (
-                      filteredBoats.map((boat) => (
-                        <tr key={boat.id}>
+                      filteredBoats.map((boat, index) => (
+                        <tr key={boat._id || boat.id || index}>
                           <td>{boat.frsNo || '-'}</td>
-                          <td>{boat.mfbrNo}</td>
-                          <td>{boat.fisherfolkName}</td>
-                          <td>{boat.boatName}</td>
-                          <td>{boat.address}</td>
-                          <td>{boat.registrationDate}</td>
+                          <td>{boat.mfbrNo || '-'}</td>
+                          <td>{boat.fisherfolkName || '-'}</td>
+                          <td>{boat.boatName || '-'}</td>
+                          <td>{boat.address || `${boat.barangay || ''}, ${boat.cityMunicipality || ''}, ${boat.province || ''}`.trim() || '-'}</td>
+                          <td>{boat.registrationDate ? new Date(boat.registrationDate).toLocaleDateString() : '-'}</td>
                           <td>
-                            <span className="status-badge active">{boat.status}</span>
+                            <span className={`status-badge ${boat.status === 'active' ? 'active' : 'inactive'}`}>
+                              {boat.status || 'Active'}
+                            </span>
                           </td>
                         </tr>
                       ))
@@ -285,19 +344,25 @@ export default function BoatsGears() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredGears.length === 0 ? (
+                    {loading ? (
                       <tr>
                         <td colSpan="4" className="empty-cell">
-                          {gearsData.length === 0 ? 'No gears registered yet' : 'No results found'}
+                          Loading gears...
+                        </td>
+                      </tr>
+                    ) : filteredGears.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="empty-cell">
+                          {error ? error : (gearsData.length === 0 ? 'No gears registered yet' : 'No results found')}
                         </td>
                       </tr>
                     ) : (
-                      filteredGears.map((gear) => (
-                        <tr key={gear.id}>
+                      filteredGears.map((gear, index) => (
+                        <tr key={gear._id || gear.id || index}>
                           <td>{gear.frsNo || '-'}</td>
-                          <td>{gear.fisherfolkName}</td>
-                          <td>{gear.gearType}</td>
-                          <td>{gear.registrationDate}</td>
+                          <td>{gear.fisherfolkName || '-'}</td>
+                          <td>{gear.gearType || '-'}</td>
+                          <td>{gear.registrationDate ? new Date(gear.registrationDate).toLocaleDateString() : '-'}</td>
                         </tr>
                       ))
                     )}

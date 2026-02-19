@@ -70,10 +70,6 @@ export default function LevelsOfDevelopment() {
       <div className="main-content">
         <Header title="LEVELS OF DEVELOPMENT" user={user} />
         <div className="content-area levels-container">
-          <div className="levels-header">
-            <h1>LEVELS OF DEVELOPMENT</h1>
-          </div>
-
           <div className="levels-intro">
             <h2>Fisheries and Aquatic Resource Management Councils</h2>
             <p>

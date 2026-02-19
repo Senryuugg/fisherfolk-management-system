@@ -3,6 +3,7 @@
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { ThemeContext } from '../context/ThemeContext';
 import { canManageUsers } from '../utils/permissions';
 import '../styles/Sidebar.css';
 
@@ -16,13 +17,14 @@ const menuItems = [
   { id: 'organization', label: 'ORGANIZATION', icon: '👥', path: '/organization', roles: ['admin', 'viewer', 'lgu'] },
   { id: 'maps', label: 'MAPS', icon: '🗺️', path: '/maps', roles: ['admin', 'viewer', 'lgu'] },
   { id: 'help-desk', label: 'HELP DESK', icon: '💬', path: '/help-desk', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'manage-account', label: 'MANAGE ACCOUNT', icon: '⚙️', path: '/manage-account', roles: ['admin', 'viewer'] },
+  { id: 'manage-account', label: 'MANAGE ACCOUNT', icon: '⚙️', path: '/manage-account', roles: ['admin', 'viewer', 'lgu'] },
   { id: 'faqs', label: 'FAQs', icon: '❓', path: '/faqs', roles: ['admin', 'viewer', 'lgu'] },
 ];
 
 export default function Sidebar({ currentPage, setCurrentPage, onLogout }) {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const { theme, changeTheme } = useContext(ThemeContext);
 
   // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter(item => 
@@ -52,10 +54,36 @@ export default function Sidebar({ currentPage, setCurrentPage, onLogout }) {
         </ul>
       </nav>
 
-      <button className="logout-btn" onClick={onLogout}>
-        <span className="menu-icon">🚪</span>
-        <span className="menu-label">LOGOUT</span>
-      </button>
+      <div className="sidebar-footer">
+        <div className="theme-selector">
+          <button
+            className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+            onClick={() => changeTheme('light')}
+          >
+            <span className="theme-icon">☀️</span>
+            <span className="theme-label">Light</span>
+          </button>
+          <button
+            className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+            onClick={() => changeTheme('dark')}
+          >
+            <span className="theme-icon">🌙</span>
+            <span className="theme-label">Dark</span>
+          </button>
+          <button
+            className={`theme-btn ${theme === 'auto' ? 'active' : ''}`}
+            onClick={() => changeTheme('auto')}
+          >
+            <span className="theme-icon">◐</span>
+            <span className="theme-label">Auto</span>
+          </button>
+        </div>
+
+        <button className="logout-btn" onClick={onLogout}>
+          <span className="menu-icon">🚪</span>
+          <span className="menu-label">LOGOUT</span>
+        </button>
+      </div>
     </aside>
   );
 }
