@@ -76,11 +76,11 @@ export default function Login() {
           <h1>Welcome to<br /><strong>FARMC</strong></h1>
           <h3>WHAT IS FARMC DATABASE SYSTEM</h3>
           <p>
-            The FARMC is a multi-sectoral advisory body established under Republic Act No. 8550 
-            (The Philippine Fisheries Code of 1998, as amended by RA 10654). It is designed to 
-            institutionalize the active participation of fisherfolk and local stakeholders in the 
-            planning and implementation of policies for the sustainable management, conservation, 
-            and protection of fisheries and aquatic resources.
+            The FARMC Database System is a centralized digital platform designed to streamline 
+            the management of Fisheries and Aquatic Resources Management Council (FARMC) records. 
+            The system supports efficient coordination among local government units, fisherfolk 
+            organizations, and relevant agencies, ensuring more responsive and data-driven  
+            fisheries governance.
           </p>
           <p className="copyright">
             Copyright © 2026 All rights reserved - Bureau of Fisheries and Aquatic Resources
