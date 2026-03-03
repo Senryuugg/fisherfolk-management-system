@@ -1,27 +1,75 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
 
-# dependencies
-/node_modules
+# ─── Environment variables ────────────────────────────────────────────────────
+# NEVER commit .env files — they contain secrets (DB password, JWT secret, etc.)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+**/.env
+**/.env.*
 
-# next.js
-/.next/
-/out/
+# ─── GCS Service Account Key ──────────────────────────────────────────────────
+# CRITICAL: This file grants full access to your GCS bucket. Never commit it.
+backend/config/gcs-service-account.json
+backend/config/*.json
 
-# production
-/build
+# ─── Uploaded files ───────────────────────────────────────────────────────────
+# Local uploads folder (files should live in GCS, not in git)
+uploads/
+**/uploads/
 
-# debug
+# ─── Frontend build output ────────────────────────────────────────────────────
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# ─── Backend build output ─────────────────────────────────────────────────────
+backend/dist/
+backend/build/
+
+# ─── Next.js (root wrapper) ───────────────────────────────────────────────────
+.next/
+out/
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+logs/
+**/logs/
 
-# env files
-.env*
+# ─── OS generated files ───────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
 
-# vercel
-.vercel
+# ─── Editor / IDE ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
 
-# typescript
+# ─── TypeScript ───────────────────────────────────────────────────────────────
 *.tsbuildinfo
 next-env.d.ts
+
+# ─── Vercel ───────────────────────────────────────────────────────────────────
+.vercel
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.zip
+*.tar.gz
+.cache/

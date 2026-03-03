@@ -4,6 +4,33 @@
   min-height: 100vh;
 }
 
+.user-search-bar {
+  margin-bottom: 20px;
+}
+
+.user-search-bar input {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.user-search-bar input:focus {
+  outline: none;
+  border-color: #4a9eff;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .manage-header {
   display: flex;
   justify-content: space-between;

@@ -1,94 +1,169 @@
-// Permission utilities for role-based access control
-
 /**
- * Role hierarchy:
- * - admin: Super admin with full access
- * - viewer: Read-only access + can create LGU user accounts
- * - lgu: Can create and read data, cannot update or delete
+ * ABAC + PBAC Hybrid — FARMC System
+ *
+ * ABAC (Attribute-Based):  checks user.role, user.department, user.city against the resource
+ * PBAC (Policy-Based):     each policy function encapsulates what a role CAN do on a resource
+ *
+ * ROLES:
+ *   admin          — super admin, full access to everything
+ *   bfar_supervisor— BFAR dept: full CRUD, manage all users, approve/reject, view audit log
+ *   bfar_viewer    — BFAR dept: read-only; cannot write, manage users, or see audit log
+ *   lgu_supervisor — LGU dept:  CRUD within their city, manage LGU users, approve LGU editors
+ *   lgu_editor     — LGU dept:  create/edit within their city (submissions go to approval queue)
  */
 
+// ─── Role constants ────────────────────────────────────────────────────────────
 export const ROLES = {
-  ADMIN: 'admin',
-  VIEWER: 'viewer',
-  LGU: 'lgu',
+  ADMIN:           'admin',
+  BFAR_SUPERVISOR: 'bfar_supervisor',
+  BFAR_VIEWER:     'bfar_viewer',
+  LGU_SUPERVISOR:  'lgu_supervisor',
+  LGU_EDITOR:      'lgu_editor',
 };
 
-// Check if user can create data (fisherfolk, boats, organizations, etc.)
+// ─── Basic role predicates ─────────────────────────────────────────────────────
+export const isAdmin          = (user) => user?.role === ROLES.ADMIN;
+export const isBfarSupervisor = (user) => user?.role === ROLES.BFAR_SUPERVISOR;
+export const isBfarViewer     = (user) => user?.role === ROLES.BFAR_VIEWER;
+export const isLguSupervisor  = (user) => user?.role === ROLES.LGU_SUPERVISOR;
+export const isLguEditor      = (user) => user?.role === ROLES.LGU_EDITOR;
+
+export const isBfarDepartment = (user) =>
+  [ROLES.BFAR_SUPERVISOR, ROLES.BFAR_VIEWER].includes(user?.role);
+export const isLguDepartment  = (user) =>
+  [ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(user?.role);
+
+/** Top-level admin-tier: admin or bfar_supervisor */
+export const isTopAdmin = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR].includes(user?.role);
+
+// ─── PBAC: Data CRUD policies ──────────────────────────────────────────────────
+
+/** All authenticated roles can read data */
+export const canRead = (user) => !!user?.role;
+
+/**
+ * ABAC create policy:
+ *  - admin, bfar_supervisor, lgu_supervisor → create directly, saved immediately
+ *  - lgu_editor                             → can create but submission goes to approval queue
+ *  - bfar_viewer                            → cannot create
+ */
 export const canCreate = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN || user.role === ROLES.LGU;
+  if (!user?.role) return false;
+  return [
+    ROLES.ADMIN,
+    ROLES.BFAR_SUPERVISOR,
+    ROLES.LGU_SUPERVISOR,
+    ROLES.LGU_EDITOR,
+  ].includes(user.role);
 };
 
-// Check if user can update data
+/** Whether this role's creates require approval (ABAC: role attribute check) */
+export const createRequiresApproval = (user) => user?.role === ROLES.LGU_EDITOR;
+
+/**
+ * ABAC update policy:
+ *  - admin, bfar_supervisor → update any record
+ *  - lgu_supervisor         → update records within their city attribute
+ *  - bfar_viewer, lgu_editor→ cannot update
+ */
 export const canUpdate = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN;
+  if (!user?.role) return false;
+  return [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR].includes(user.role);
 };
 
-// Check if user can delete data
+/**
+ * PBAC delete policy:
+ *  Only admin and bfar_supervisor may delete records.
+ */
 export const canDelete = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN;
+  if (!user?.role) return false;
+  return [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR].includes(user.role);
 };
 
-// Check if user can read/view data (all roles can read)
-export const canRead = (user) => {
-  if (!user || !user.role) return false;
-  return true; // All authenticated users can read
-};
+// ─── PBAC: User management policies ───────────────────────────────────────────
 
-// Check if user can manage user accounts
-export const canManageUsers = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN || user.role === ROLES.VIEWER;
-};
+export const canManageUsers  = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR].includes(user?.role);
 
-// Check if user can create user accounts
-export const canCreateUsers = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN || user.role === ROLES.VIEWER;
-};
+export const canCreateUsers  = (user) => canManageUsers(user);
 
-// Check if user can create LGU users specifically (viewers can only create LGU users)
-export const canCreateLGUUsers = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.VIEWER;
-};
-
-// Check if user can create admin users (only admins can)
-export const canCreateAdminUsers = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN;
-};
-
-// Check if user is admin
-export const isAdmin = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.ADMIN;
-};
-
-// Check if user is viewer
-export const isViewer = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.VIEWER;
-};
-
-// Check if user is LGU
-export const isLGU = (user) => {
-  if (!user || !user.role) return false;
-  return user.role === ROLES.LGU;
-};
-
-// Get user role display name
-export const getRoleDisplayName = (role) => {
-  switch (role) {
+/**
+ * ABAC: which roles this user is allowed to assign (role-scope restriction)
+ */
+export const getCreatableRoles = (user) => {
+  switch (user?.role) {
     case ROLES.ADMIN:
-      return 'Super Admin';
-    case ROLES.VIEWER:
-      return 'Viewer';
-    case ROLES.LGU:
-      return 'LGU User';
+      return [
+        ROLES.ADMIN,
+        ROLES.BFAR_SUPERVISOR,
+        ROLES.BFAR_VIEWER,
+        ROLES.LGU_SUPERVISOR,
+        ROLES.LGU_EDITOR,
+      ];
+    case ROLES.BFAR_SUPERVISOR:
+      return [
+        ROLES.BFAR_SUPERVISOR,
+        ROLES.BFAR_VIEWER,
+        ROLES.LGU_SUPERVISOR,
+        ROLES.LGU_EDITOR,
+      ];
+    case ROLES.LGU_SUPERVISOR:
+      return [ROLES.LGU_EDITOR];
     default:
-      return role;
+      return [];
   }
+};
+
+// ─── PBAC: Approval policy ─────────────────────────────────────────────────────
+
+/**
+ * admin and bfar_supervisor can approve/reject any submission.
+ * lgu_supervisor can approve/reject submissions within their city.
+ */
+export const canApprove = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR].includes(user?.role);
+
+// ─── PBAC: Audit log policy ────────────────────────────────────────────────────
+
+/** Only admin and bfar_supervisor can view audit logs */
+export const canViewAuditLog = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR].includes(user?.role);
+
+// ─── Display helpers ───────────────────────────────────────────────────────────
+
+export const getRoleDisplayName = (role) => {
+  const names = {
+    [ROLES.ADMIN]:           'Admin',
+    [ROLES.BFAR_SUPERVISOR]: 'BFAR Supervisor',
+    [ROLES.BFAR_VIEWER]:     'BFAR Viewer',
+    [ROLES.LGU_SUPERVISOR]:  'LGU Supervisor',
+    [ROLES.LGU_EDITOR]:      'LGU Editor',
+    // Legacy labels
+    lgu:        'LGU (Legacy)',
+    viewer:     'Viewer (Legacy)',
+    bfar_admin: 'BFAR Admin (Legacy)',
+    bfar_user:  'BFAR User (Legacy)',
+    lgu_admin:  'LGU Admin (Legacy)',
+    lgu_user:   'LGU User (Legacy)',
+  };
+  return names[role] || role || 'Unknown';
+};
+
+export const getRoleBadgeColor = (role) => {
+  const colors = {
+    [ROLES.ADMIN]:           { bg: '#fee2e2', text: '#991b1b' },
+    [ROLES.BFAR_SUPERVISOR]: { bg: '#dbeafe', text: '#1e40af' },
+    [ROLES.BFAR_VIEWER]:     { bg: '#e0f2fe', text: '#0369a1' },
+    [ROLES.LGU_SUPERVISOR]:  { bg: '#dcfce7', text: '#166534' },
+    [ROLES.LGU_EDITOR]:      { bg: '#fefce8', text: '#854d0e' },
+  };
+  return colors[role] || { bg: '#f3f4f6', text: '#6b7280' };
+};
+
+export const getDepartmentFromRole = (role) => {
+  if (role === ROLES.ADMIN) return 'admin';
+  if ([ROLES.BFAR_SUPERVISOR, ROLES.BFAR_VIEWER].includes(role)) return 'bfar';
+  if ([ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(role)) return 'lgu';
+  return '';
 };

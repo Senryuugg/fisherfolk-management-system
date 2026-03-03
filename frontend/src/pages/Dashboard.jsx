@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState(null);
   const [organizationCount, setOrganizationCount] = useState(0);
 
+  const [error, setError] = useState(null);
+
   if (!user) {
     navigate('/login');
     return null;
@@ -52,20 +54,23 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      console.log('[v0] Fetching dashboard data...');
       const [statsResponse, orgResponse] = await Promise.all([
         reportsAPI.getDashboardStats(),
         organizationAPI.getAll(),
       ]);
-      
-      console.log('[v0] Dashboard stats:', statsResponse.data);
-      console.log('[v0] Organizations:', orgResponse.data);
-      
       setDashboardData(statsResponse.data);
       setOrganizationCount(orgResponse.data.length);
-    } catch (error) {
-      console.error('[v0] Error fetching dashboard data:', error);
+    } catch (err) {
+      setError('Could not connect to the server. Showing offline view.');
+      // Set empty fallback so the dashboard renders
+      setDashboardData({
+        fisherfolk: { total: [], byProvince: [], byLivelihood: [], byStatus: [], byYear: [] },
+        boats: { total: [], byYear: [] },
+        gears: { total: [], byType: [] },
+      });
+      setOrganizationCount(0);
     } finally {
       setLoading(false);
     }
@@ -76,14 +81,17 @@ export default function Dashboard() {
     navigate('/login');
   };
 
-  if (loading || !dashboardData) {
+  if (loading) {
     return (
       <div className="dashboard-container">
         <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} />
         <div className="main-content">
           <Header title="DASHBOARD" user={user} />
           <div className="content-area">
-            <p>Loading dashboard data...</p>
+            <div className="dashboard-loading">
+              <div className="loading-spinner"></div>
+              <p>Loading dashboard data...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -251,6 +259,11 @@ export default function Dashboard() {
       <div className="main-content">
         <Header title="DASHBOARD" user={user} />
         <div className="content-area">
+          {error && (
+            <div className="dashboard-error-banner">
+              {error}
+            </div>
+          )}
           <div className="stat-cards-row">
             <div className="stat-card">
               <div className="stat-card-border"></div>
@@ -288,7 +301,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="chart-container">
-              <h4>Fisherfolk by Province (Top 6)</h4>
+              <h4>Fisherfolk by District</h4>
               <div className="chart-wrapper">
                 <Bar data={provinceChartData} options={chartOptions} />
               </div>
@@ -303,7 +316,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="chart-container">
-              <h4>Fishing Gear Types (Top 6)</h4>
+              <h4>Fishing Gear Types</h4>
               <div className="chart-wrapper">
                 <Bar data={gearTypesChartData} options={chartOptions} />
               </div>

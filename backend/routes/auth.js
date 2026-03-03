@@ -2,11 +2,10 @@ import express from 'express';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
-import { authenticateToken, authorizeRole } from '../middleware/auth.js';
+import { authenticateToken, authorizeRole, canManageUsers } from '../middleware/auth.js';
+import { createAuditLog } from './auditLogs.js';
 
 const router = express.Router();
-
-console.log('[v0] Auth routes module loaded');
 
 // Register
 router.post(
@@ -34,14 +33,10 @@ router.post(
         return res.status(400).json({ message: 'User already exists' });
       }
 
-      // Restrict role assignment based on who is creating the account
-      let assignedRole = 'viewer';
-      
-      // If role is provided in request, validate it
-      if (role) {
-        // Only admin can create admin users
-        // Viewers can only create LGU users
-        // For now, allow role assignment (will add auth check in separate endpoint)
+      // Default role
+      let assignedRole = 'lgu_editor';
+      const validRoles = ['admin', 'bfar_supervisor', 'bfar_viewer', 'lgu_supervisor', 'lgu_editor'];
+      if (role && validRoles.includes(role)) {
         assignedRole = role;
       }
 
@@ -97,22 +92,16 @@ router.post(
 
     try {
       const { username, password } = req.body;
-      console.log('[v0] Login attempt for username:', username);
 
       // Find user
       const user = await User.findOne({ username });
-      console.log('[v0] User found:', user ? 'YES' : 'NO');
       if (!user) {
-        console.log('[v0] User not found in database');
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
       // Check password
-      console.log('[v0] Checking password...');
       const isValidPassword = await user.comparePassword(password);
-      console.log('[v0] Password valid:', isValidPassword);
       if (!isValidPassword) {
-        console.log('[v0] Password invalid');
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
@@ -123,6 +112,17 @@ router.post(
         { expiresIn: '7d' }
       );
 
+      await createAuditLog({
+        userId: user._id,
+        username: user.username,
+        userRole: user.role,
+        action: 'login',
+        resource: 'user',
+        resourceId: user._id,
+        details: { username: user.username },
+        req,
+      });
+
       res.json({
         message: 'Login successful',
         token,
@@ -132,6 +132,9 @@ router.post(
           email: user.email,
           fullName: user.fullName,
           role: user.role,
+          department: user.department,
+          city: user.city,
+          region: user.region,
         },
       });
     } catch (error) {
@@ -140,86 +143,82 @@ router.post(
   }
 );
 
-// Create user (Admin and Viewer can create users)
-router.post('/users', authenticateToken, authorizeRole(['admin', 'viewer']), async (req, res) => {
+// Create user (Admin, bfar_admin, lgu_admin can create users)
+router.post('/users', authenticateToken, canManageUsers, async (req, res) => {
   try {
-    console.log('[v0] Create user endpoint hit');
-    console.log('[v0] Request user role:', req.user?.role);
-    console.log('[v0] Request body:', req.body);
-    
-    const { username, email, password, fullName, department, region, role } = req.body;
+    const { username, email, password, fullName, department, region, city, role } = req.body;
 
-    // Validate required fields
     if (!username || !email || !password || !fullName) {
-      console.log('[v0] Missing required fields');
       return res.status(400).json({ message: 'All required fields must be provided' });
     }
 
-    // Check role permissions
-    // Viewers can only create LGU users
-    if (req.user.role === 'viewer' && role !== 'lgu') {
-      return res.status(403).json({ message: 'Viewers can only create LGU user accounts' });
+    // Role permission rules (who can create which roles)
+    const allowedRolesByCreator = {
+      admin:           ['admin', 'bfar_supervisor', 'bfar_viewer', 'lgu_supervisor', 'lgu_editor'],
+      bfar_supervisor: ['bfar_supervisor', 'bfar_viewer', 'lgu_supervisor', 'lgu_editor'],
+      lgu_supervisor:  ['lgu_editor'],
+    };
+    const allowed = allowedRolesByCreator[req.user.role] || [];
+    if (role && !allowed.includes(role)) {
+      return res.status(403).json({ message: `You cannot create a user with role "${role}"` });
     }
 
-    // Only admin can create admin users
-    if (role === 'admin' && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admins can create admin accounts' });
-    }
-
-    // Check if user exists
-    const existingUser = await User.findOne({
-      $or: [{ username }, { email }],
-    });
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
-      console.log('[v0] User already exists');
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(409).json({ message: 'Username or email already exists', duplicate: true });
     }
 
-    console.log('[v0] Creating new user with data:', {
-      username,
-      email,
-      fullName,
-      department,
-      region,
-      role: role || 'lgu',
-    });
-
-    // Create new user
-    const user = new User({
+    const newUser = new User({
       username,
       email,
       password,
       fullName,
       department,
       region,
-      role: role || 'lgu',
+      city,
+      role: role || 'lgu_editor',
     });
 
-    console.log('[v0] User object created, attempting to save...');
-    await user.save();
-    console.log('[v0] User saved successfully:', user._id);
+    await newUser.save();
+
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'create',
+      resource: 'user',
+      resourceId: newUser._id,
+      details: { createdUsername: username, role: newUser.role },
+      req,
+    });
 
     res.status(201).json({
       message: 'User created successfully',
       user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        role: newUser.role,
+        department: newUser.department,
+        city: newUser.city,
       },
     });
   } catch (error) {
-    console.error('[v0] Error creating user:', error);
-    console.error('[v0] Error stack:', error.stack);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
-// Get all users (Admin and Viewer can view users)
-router.get('/users', authenticateToken, authorizeRole(['admin', 'viewer']), async (req, res) => {
+// Get all users (based on role)
+router.get('/users', authenticateToken, canManageUsers, async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    let query = {};
+    if (req.user.role === 'lgu_supervisor') {
+      query = { role: { $in: ['lgu_supervisor', 'lgu_editor'] }, city: req.user.city };
+    } else if (req.user.role === 'bfar_supervisor') {
+      query = { role: { $ne: 'admin' } };
+    }
+    const users = await User.find(query).select('-password');
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -239,55 +238,58 @@ router.get('/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Update user (Admin can update anyone, Viewer and others can update themselves)
+// Update user
 router.put('/users/:id', authenticateToken, async (req, res) => {
   try {
-    const { username, email, fullName, department, region, role, active } = req.body;
+    const { username, email, fullName, department, region, city, role, active, password } = req.body;
 
-    // Check permissions
-    const isAdmin = req.user.role === 'admin';
+    const isAdmin       = ['admin', 'bfar_supervisor'].includes(req.user.role);
+    const isManagerRole = req.user.role === 'lgu_supervisor';
     const isUpdatingSelf = req.user.id === req.params.id;
 
-    if (!isAdmin && !isUpdatingSelf) {
+    if (!isAdmin && !isManagerRole && !isUpdatingSelf) {
       return res.status(403).json({ message: 'You can only update your own account' });
     }
 
-    // Non-admin users cannot change their role or active status
-    if (!isAdmin && (role || active !== undefined)) {
+    // Non-admins cannot change role or active status (except managers for their managed users)
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) return res.status(404).json({ message: 'User not found' });
+
+    if (!isAdmin && !isManagerRole && (role || active !== undefined)) {
       return res.status(403).json({ message: 'You cannot change role or active status' });
     }
 
-    // Check if username or email already exists for other users
+    // Check for duplicate username/email
     const existingUser = await User.findOne({
       $or: [{ username }, { email }],
       _id: { $ne: req.params.id },
     });
-
     if (existingUser) {
-      return res.status(400).json({ message: 'Username or email already exists' });
+      return res.status(409).json({ message: 'Username or email already exists', duplicate: true });
     }
 
-    const updateData = {
-      username,
-      email,
-      fullName,
-      department,
-      region,
-    };
-
-    // Only admin can update role and active status
-    if (isAdmin) {
-      updateData.role = role;
-      updateData.active = active;
+    const updateData = { username, email, fullName, department, region, city };
+    if (isAdmin || isManagerRole) {
+      if (role) updateData.role = role;
+      if (active !== undefined) updateData.active = active;
+    }
+    if (password) {
+      const bcrypt = await import('bcryptjs');
+      updateData.password = await bcrypt.default.hash(password, 10);
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-    }).select('-password');
+    const user = await User.findByIdAndUpdate(req.params.id, updateData, { new: true }).select('-password');
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'update',
+      resource: 'user',
+      resourceId: req.params.id,
+      details: { updatedFields: Object.keys(updateData) },
+      req,
+    });
 
     res.json({ message: 'User updated successfully', user });
   } catch (error) {
@@ -295,21 +297,31 @@ router.put('/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Delete user (Admin only)
-router.delete('/users/:id', authenticateToken, authorizeRole(['admin']), async (req, res) => {
+// Delete user (admin and bfar_admin only)
+router.delete('/users/:id', authenticateToken, canManageUsers, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    if (!['admin', 'bfar_supervisor'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Only admins can delete users' });
     }
+
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'delete',
+      resource: 'user',
+      resourceId: req.params.id,
+      details: { deletedUsername: user.username },
+      req,
+    });
 
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
-
-console.log('[v0] Auth routes configured - POST /users endpoint registered');
 
 export default router;

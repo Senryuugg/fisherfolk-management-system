@@ -15,6 +15,8 @@ import Maps from './pages/Maps';
 import HelpDesk from './pages/HelpDesk';
 import ManageAccount from './pages/ManageAccount';
 import FAQs from './pages/FAQs';
+import AuditLog from './pages/AuditLog';
+import Approvals from './pages/Approvals';
 import './styles/Global.css';
 
 function ProtectedRoute({ children }) {
@@ -116,6 +118,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <FAQs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/audit-log"
+            element={
+              <ProtectedRoute>
+                <AuditLog />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/approvals"
+            element={
+              <ProtectedRoute>
+                <Approvals />
               </ProtectedRoute>
             }
           />

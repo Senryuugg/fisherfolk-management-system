@@ -30,9 +30,24 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      // Verify token is still valid
-      const user = JSON.parse(localStorage.getItem('user'));
-      setUser(user);
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      if (storedUser) {
+        // Migrate all legacy roles to the new ABAC+PBAC role system
+        const legacyRoleMap = {
+          lgu:            'lgu_supervisor',
+          viewer:         'bfar_viewer',
+          officer:        'lgu_editor',
+          bfar_admin:     'bfar_supervisor',
+          bfar_user:      'bfar_viewer',
+          lgu_admin:      'lgu_supervisor',
+          lgu_user:       'lgu_editor',
+        };
+        if (legacyRoleMap[storedUser.role]) {
+          storedUser.role = legacyRoleMap[storedUser.role];
+          localStorage.setItem('user', JSON.stringify(storedUser));
+        }
+        setUser(storedUser);
+      }
     }
     setLoading(false);
   }, [token]);

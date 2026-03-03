@@ -1,8 +1,44 @@
 import express from 'express';
 import MapData from '../models/MapData.js';
+import Fisherfolk from '../models/Fisherfolk.js';
+import Boat from '../models/Boat.js';
+import Organization from '../models/Organization.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Get aggregated city-level stats: fisherfolk count, boat count, org count per city
+router.get('/city-stats', authenticateToken, async (req, res) => {
+  try {
+    const [fisherfolkByCity, boatsByCity, orgsByCity] = await Promise.all([
+      Fisherfolk.aggregate([
+        { $group: { _id: '$cityMunicipality', count: { $sum: 1 } } },
+      ]),
+      Boat.aggregate([
+        { $group: { _id: '$cityMunicipality', count: { $sum: 1 } } },
+      ]),
+      Organization.aggregate([
+        { $group: { _id: '$city', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Merge into a keyed map for easy client-side lookup
+    const stats = {};
+    fisherfolkByCity.forEach((r) => {
+      if (r._id) stats[r._id] = { ...stats[r._id], city: r._id, fisherfolk: r.count };
+    });
+    boatsByCity.forEach((r) => {
+      if (r._id) stats[r._id] = { ...stats[r._id], city: r._id, boats: r.count };
+    });
+    orgsByCity.forEach((r) => {
+      if (r._id) stats[r._id] = { ...stats[r._id], city: r._id, organizations: r.count };
+    });
+
+    res.json(Object.values(stats));
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching city stats', error: error.message });
+  }
+});
 
 // Get all map layers with filters
 router.get('/', authenticateToken, async (req, res) => {

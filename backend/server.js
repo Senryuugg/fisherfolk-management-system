@@ -1,7 +1,9 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { isGCSEnabled } from './utils/gcs.js';
 import authRoutes from './routes/auth.js';
 import fisherfolkRoutes from './routes/fisherfolk.js';
 import organizationRoutes from './routes/organization.js';
@@ -15,53 +17,52 @@ import ticketsRoutes from './routes/tickets.js';
 import developmentLevelsRoutes from './routes/developmentLevels.js';
 import mapsRoutes from './routes/maps.js';
 import reportsRoutes from './routes/reports.js';
+import auditLogsRoutes from './routes/auditLogs.js';
+import approvalsRoutes from './routes/approvals.js';
 
-dotenv.config();
+// dotenv is loaded via --import ./env.js (see package.json scripts)
+// No need to call dotenv.config() here — env vars are already populated.
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Trigger GCS initialization at startup so credentials are validated immediately
+isGCSEnabled();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI;
-console.log('[v0] Checking MongoDB URI...');
-console.log('[v0] MONGODB_URI is', mongoURI ? 'SET ✓' : 'NOT SET ✗');
 
 if (!mongoURI) {
-  console.error('❌ MONGODB_URI not found in .env file!');
-  console.log('[v0] Make sure .env file exists in /backend folder with MONGODB_URI set');
+  console.error('ERROR: MONGODB_URI not set in .env file.');
   process.exit(1);
 }
 
 mongoose
-  .connect(mongoURI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => {
-    console.log('✅ MongoDB connected successfully');
-    console.log('[v0] Connected to MongoDB Atlas');
-  })
+  .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
   .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.log('[v0] Connection string:', mongoURI.substring(0, 30) + '...');
-    console.log('[v0] Check if your MongoDB Atlas is running and connection string is correct');
+    console.error('MongoDB connection error:', err.message);
     process.exit(1);
   });
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`[v0] ${req.method} ${req.path}`);
-  next();
-});
+// Request logging (development only)
+if (process.env.NODE_ENV === 'development') {
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Routes
-console.log('[v0] Registering routes...');
 app.use('/api/auth', authRoutes);
-console.log('[v0] ✓ Auth routes mounted at /api/auth');
 app.use('/api/fisherfolk', fisherfolkRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/boats', boatsRoutes);
@@ -74,15 +75,8 @@ app.use('/api/tickets', ticketsRoutes);
 app.use('/api/development-levels', developmentLevelsRoutes);
 app.use('/api/maps', mapsRoutes);
 app.use('/api/reports', reportsRoutes);
-
-console.log('[v0] All routes registered successfully');
-console.log('[v0] Available endpoints:');
-console.log('[v0] - POST /api/auth/register');
-console.log('[v0] - POST /api/auth/login');
-console.log('[v0] - POST /api/auth/users (create user - protected)');
-console.log('[v0] - GET /api/auth/users (list users - protected)');
-console.log('[v0] - PUT /api/auth/users/:id (update user - protected)');
-console.log('[v0] - DELETE /api/auth/users/:id (delete user - protected)');
+app.use('/api/audit-logs', auditLogsRoutes);
+app.use('/api/approvals', approvalsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

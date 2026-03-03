@@ -1,382 +1,716 @@
 'use client';
 
 import { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { organizationAPI, committeesAPI, officersAPI } from '../services/api';
-import { canCreate } from '../utils/permissions';
+import { canCreate, canUpdate, canDelete } from '../utils/permissions';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import '../styles/Organization.css';
 
+const today = () => new Date().toISOString().slice(0, 10);
+
+const defaultOrg = {
+  name: '',
+  category: 'Association',
+  registrationDate: today(),
+  address: '',
+  contactPerson: '',
+  status: 'active',
+};
+
+const defaultCommittee = {
+  name: '',
+  chairman: '',
+  organization: '',
+  members: '',
+  dateFormed: today(),
+};
+
+const defaultOfficer = {
+  name: '',
+  position: '',
+  organization: '',
+  appointmentDate: today(),
+};
+
 export default function Organization() {
   const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('organization');
-  const [activeTab, setActiveTab] = useState('organization');
+  const [activeTab, setActiveTab] = useState('organizations');
+
+  // Data
   const [organizations, setOrganizations] = useState([]);
   const [committees, setCommittees] = useState([]);
   const [officers, setOfficers] = useState([]);
-  const [loading, setLoading] = useState(false);
+
+  // UI
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showListModal, setShowListModal] = useState(false);
-  const [filters, setFilters] = useState({
-    region: '',
-    status: '',
-    search: '',
-  });
-  const [formData, setFormData] = useState({
-    name: '',
-    region: '',
-    address: '',
-    contactNumber: '',
-    contactPerson: '',
-    status: 'active',
-  });
+  const [formError, setFormError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchOrganizations();
-    if (activeTab === 'committee') {
-      fetchCommittees();
-    } else if (activeTab === 'officers') {
-      fetchOfficers();
-    }
-  }, [filters, activeTab]);
+  // Modal state
+  const [modal, setModal] = useState(null); // null | 'org' | 'committee' | 'officer'
+  const [editingId, setEditingId] = useState(null);
 
-  const fetchCommittees = async () => {
-    setLoading(true);
-    try {
-      const response = await committeesAPI.getAll(filters);
-      console.log('[v0] Committees data fetched:', response.data);
-      setCommittees(response.data || []);
-      setError('');
-    } catch (err) {
-      console.error('[v0] Error fetching committees:', err);
-      setCommittees([]);
-    } finally {
-      setLoading(false);
-    }
+  // Form states
+  const [orgForm, setOrgForm] = useState(defaultOrg);
+  const [committeeForm, setCommitteeForm] = useState(defaultCommittee);
+  const [officerForm, setOfficerForm] = useState(defaultOfficer);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
-  const fetchOfficers = async () => {
-    setLoading(true);
-    try {
-      const response = await officersAPI.getAll(filters);
-      console.log('[v0] Officers data fetched:', response.data);
-      setOfficers(response.data || []);
-      setError('');
-    } catch (err) {
-      console.error('[v0] Error fetching officers:', err);
-      setOfficers([]);
-    } finally {
-      setLoading(false);
-    }
+  const showSuccess = (msg) => {
+    setSuccessMessage(msg);
+    setTimeout(() => setSuccessMessage(''), 3500);
   };
 
-  const fetchOrganizations = async () => {
+  // ── Fetch all data ──────────────────────────────────────────────────────────
+  const fetchAll = async () => {
     setLoading(true);
+    setError('');
     try {
-      const response = await organizationAPI.getAll({
-        region: filters.region,
-        status: filters.status,
-      });
-      let data = response.data;
-      if (filters.search) {
-        data = data.filter((org) => org.name.toLowerCase().includes(filters.search.toLowerCase()));
-      }
-      setOrganizations(data);
-      setError('');
+      const [orgsRes, comRes, offRes] = await Promise.all([
+        organizationAPI.getAll(),
+        committeesAPI.getAll(),
+        officersAPI.getAll(),
+      ]);
+      setOrganizations(orgsRes.data || []);
+      setCommittees(comRes.data || []);
+      setOfficers(offRes.data || []);
     } catch (err) {
       setError('Failed to load organizations');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddOrganization = async (e) => {
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  // ── Open modals ──────────────────────────────────────────────────────────────
+  const openAddOrg = () => {
+    setEditingId(null);
+    setOrgForm(defaultOrg);
+    setFormError('');
+    setModal('org');
+  };
+
+  const openEditOrg = (org) => {
+    setEditingId(org._id);
+    setOrgForm({
+      name: org.name,
+      category: org.category,
+      registrationDate: org.registrationDate?.slice(0, 10) || today(),
+      address: org.address || '',
+      contactPerson: org.contactPerson || '',
+      status: org.status,
+    });
+    setFormError('');
+    setModal('org');
+  };
+
+  const openAddCommittee = () => {
+    setEditingId(null);
+    setCommitteeForm(defaultCommittee);
+    setFormError('');
+    setModal('committee');
+  };
+
+  const openEditCommittee = (c) => {
+    setEditingId(c._id);
+    setCommitteeForm({
+      name: c.name,
+      chairman: c.chairman,
+      organization: c.organization,
+      members: c.members,
+      dateFormed: c.dateFormed?.slice(0, 10) || today(),
+    });
+    setFormError('');
+    setModal('committee');
+  };
+
+  const openAddOfficer = () => {
+    setEditingId(null);
+    setOfficerForm(defaultOfficer);
+    setFormError('');
+    setModal('officer');
+  };
+
+  const openEditOfficer = (o) => {
+    setEditingId(o._id);
+    setOfficerForm({
+      name: o.name,
+      position: o.position,
+      organization: o.organization,
+      appointmentDate: o.appointmentDate?.slice(0, 10) || today(),
+    });
+    setFormError('');
+    setModal('officer');
+  };
+
+  const closeModal = () => {
+    setModal(null);
+    setEditingId(null);
+    setFormError('');
+  };
+
+  // ── Submit handlers ──────────────────────────────────────────────────────────
+  const handleOrgSubmit = async (e) => {
     e.preventDefault();
+    if (!orgForm.name.trim()) { setFormError('Organization name is required.'); return; }
+    if (!orgForm.category) { setFormError('Category is required.'); return; }
+    if (!orgForm.registrationDate) { setFormError('Registration date is required.'); return; }
+    setSubmitting(true);
     try {
-      await organizationAPI.create(formData);
-      setShowAddModal(false);
-      setFormData({
-        name: '',
-        region: '',
-        address: '',
-        contactNumber: '',
-        contactPerson: '',
-        status: 'active',
-      });
-      fetchOrganizations();
+      if (editingId) {
+        const res = await organizationAPI.update(editingId, orgForm);
+        setOrganizations((prev) => prev.map((o) => (o._id === editingId ? res.data : o)));
+        showSuccess('Organization updated successfully.');
+      } else {
+        const res = await organizationAPI.create(orgForm);
+        setOrganizations((prev) => [...prev, res.data]);
+        showSuccess('Organization added successfully.');
+      }
+      closeModal();
     } catch (err) {
-      setError('Failed to create organization');
-      console.error(err);
+      setFormError(err.response?.data?.message || 'Failed to save organization.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+  const handleCommitteeSubmit = async (e) => {
+    e.preventDefault();
+    if (!committeeForm.name.trim()) { setFormError('Committee name is required.'); return; }
+    if (!committeeForm.organization.trim()) { setFormError('Organization is required.'); return; }
+    if (!committeeForm.chairman.trim()) { setFormError('Chairman is required.'); return; }
+    setSubmitting(true);
+    try {
+      if (editingId) {
+        const res = await committeesAPI.update(editingId, committeeForm);
+        setCommittees((prev) => prev.map((c) => (c._id === editingId ? res.data : c)));
+        showSuccess('Committee updated successfully.');
+      } else {
+        const res = await committeesAPI.create(committeeForm);
+        setCommittees((prev) => [...prev, res.data]);
+        showSuccess('Committee added successfully.');
+      }
+      closeModal();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to save committee.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOfficerSubmit = async (e) => {
+    e.preventDefault();
+    if (!officerForm.name.trim()) { setFormError('Name is required.'); return; }
+    if (!officerForm.position.trim()) { setFormError('Position is required.'); return; }
+    if (!officerForm.organization.trim()) { setFormError('Organization is required.'); return; }
+    if (!officerForm.appointmentDate) { setFormError('Appointment date is required.'); return; }
+    setSubmitting(true);
+    try {
+      if (editingId) {
+        const res = await officersAPI.update(editingId, officerForm);
+        setOfficers((prev) => prev.map((o) => (o._id === editingId ? res.data : o)));
+        showSuccess('Officer updated successfully.');
+      } else {
+        const res = await officersAPI.create(officerForm);
+        setOfficers((prev) => [...prev, res.data]);
+        showSuccess('Officer added successfully.');
+      }
+      closeModal();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to save officer.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── Delete ───────────────────────────────────────────────────────────────────
+  const handleDeleteOrg = async (id) => {
+    if (!window.confirm('Delete this organization?')) return;
+    try {
+      await organizationAPI.delete(id);
+      setOrganizations((prev) => prev.filter((o) => o._id !== id));
+      showSuccess('Organization deleted.');
+    } catch (err) {
+      setError('Failed to delete organization.');
+    }
+  };
+
+  const handleDeleteCommittee = async (id) => {
+    if (!window.confirm('Delete this committee?')) return;
+    try {
+      await committeesAPI.delete(id);
+      setCommittees((prev) => prev.filter((c) => c._id !== id));
+      showSuccess('Committee deleted.');
+    } catch (err) {
+      setError('Failed to delete committee.');
+    }
+  };
+
+  const handleDeleteOfficer = async (id) => {
+    if (!window.confirm('Delete this officer?')) return;
+    try {
+      await officersAPI.delete(id);
+      setOfficers((prev) => prev.filter((o) => o._id !== id));
+      showSuccess('Officer deleted.');
+    } catch (err) {
+      setError('Failed to delete officer.');
+    }
+  };
+
+  // ── Filtered data ────────────────────────────────────────────────────────────
+  const q = search.toLowerCase();
+  const filteredOrgs = organizations.filter(
+    (o) => o.name?.toLowerCase().includes(q) || o.category?.toLowerCase().includes(q)
+  );
+  const filteredCommittees = committees.filter(
+    (c) => c.name?.toLowerCase().includes(q) || c.organization?.toLowerCase().includes(q)
+  );
+  const filteredOfficers = officers.filter(
+    (o) => o.name?.toLowerCase().includes(q) || o.organization?.toLowerCase().includes(q)
+  );
+
+  const orgNames = organizations.map((o) => o.name);
+
+  // ── Tab header config — each tab has its own add handler ─────────────────────
+  const tabConfig = {
+    organizations: { label: 'Add Organization', onAdd: openAddOrg },
+    committee:     { label: 'Add Committee',    onAdd: openAddCommittee },
+    officers:      { label: 'Add Officer',      onAdd: openAddOfficer },
   };
 
   return (
     <div className="dashboard-container">
-      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={logout} />
+      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout} />
       <div className="main-content">
         <Header title="ORGANIZATION" user={user} />
         <div className="content-area org-container">
+          {successMessage && <div className="success-message">{successMessage}</div>}
+          {error && <div className="error-banner">{error}</div>}
+
           <div className="org-table-section">
-            {/* Tabs in Table Header */}
+            {/* Tab bar + Add button — button label and handler change with active tab */}
             <div className="org-tabs-header">
               <div className="org-tabs">
-                <button
-                  className={`org-tab ${activeTab === 'organization' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('organization')}
-                >
-                  Organization
-                </button>
-                <button
-                  className={`org-tab ${activeTab === 'committee' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('committee')}
-                >
-                  Committee
-                </button>
-                <button
-                  className={`org-tab ${activeTab === 'officers' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('officers')}
-                >
-                  Officers
-                </button>
+                {[
+                  { id: 'organizations', label: 'Organizations' },
+                  { id: 'committee',     label: 'Committee' },
+                  { id: 'officers',      label: 'Officers' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    className={`org-tab ${activeTab === t.id ? 'active' : ''}`}
+                    onClick={() => { setActiveTab(t.id); setSearch(''); }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
+
+              {canCreate(user) && (
+                <button className="add-org-btn" onClick={tabConfig[activeTab].onAdd}>
+                  + {tabConfig[activeTab].label}
+                </button>
+              )}
             </div>
 
-            {/* Organization Tab */}
-            {activeTab === 'organization' && (
-              <div className="org-tab-content">
-                <div className="org-search-form">
-                  <input
-                    type="text"
-                    placeholder="Search organization..."
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    name="search"
-                  className="org-search-input"
+            {/* Search + count bar */}
+            <div className="org-tab-content">
+              <div className="org-top-bar">
+                <input
+                  className="org-search"
+                  type="text"
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
-                {canCreate(user) && (
-                  <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
-                    + Add Organization
-                  </button>
-                )}
+                <span className="org-count">
+                  {activeTab === 'organizations' && `${filteredOrgs.length} organization(s)`}
+                  {activeTab === 'committee'     && `${filteredCommittees.length} committee(s)`}
+                  {activeTab === 'officers'      && `${filteredOfficers.length} officer(s)`}
+                </span>
               </div>
 
-                {/* List Section */}
-                <div className="org-list-section">
-                  <div className="org-list-container">
-                    {loading ? (
-                      <div className="loading-text">Loading organizations...</div>
-                    ) : organizations.length === 0 ? (
-                      <div className="empty-text">No organizations found</div>
-                    ) : (
+              {loading ? (
+                <div className="loading-row">Loading...</div>
+              ) : (
+                <>
+                  {/* ── Organizations Tab ─────────────────────────────────────── */}
+                  {activeTab === 'organizations' && (
+                    <div className="org-list-container">
                       <table className="org-table">
                         <thead>
                           <tr>
-                            <th>Name of Organization</th>
+                            <th>Organization Name</th>
+                            <th>Category</th>
+                            <th>Registration Date</th>
+                            <th>Contact Person</th>
+                            <th>Members</th>
                             <th>Status</th>
+                            {(canUpdate(user) || canDelete(user)) && <th>Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
-                          {organizations.map((org) => (
-                            <tr key={org._id}>
-                              <td>{org.name}</td>
-                              <td>
-                                <span className={`status-badge ${org.status}`}>{org.status}</span>
-                              </td>
-                            </tr>
-                          ))}
+                          {filteredOrgs.length === 0 ? (
+                            <tr><td colSpan="7" className="empty-text">No organizations found.</td></tr>
+                          ) : (
+                            filteredOrgs.map((org) => (
+                              <tr key={org._id}>
+                                <td>{org.name}</td>
+                                <td>{org.category}</td>
+                                <td>{org.registrationDate?.slice(0, 10)}</td>
+                                <td>{org.contactPerson || '-'}</td>
+                                <td>{org.members?.length ?? org.memberCount ?? '-'}</td>
+                                <td><span className={`status-badge ${org.status}`}>{org.status}</span></td>
+                                {(canUpdate(user) || canDelete(user)) && (
+                                  <td className="actions-cell">
+                                    {canUpdate(user) && (
+                                      <button className="edit-btn" onClick={() => openEditOrg(org)}>Edit</button>
+                                    )}
+                                    {canDelete(user) && (
+                                      <button className="delete-btn" onClick={() => handleDeleteOrg(org._id)}>Delete</button>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Committee Tab */}
-            {activeTab === 'committee' && (
-              <div className="org-tab-content">
-                <div className="org-search-form">
-                  <input
-                    type="text"
-                    placeholder="Search committee..."
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    name="search"
-                    className="org-search-input"
-                  />
-                  <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
-                    + New
-                  </button>
-                </div>
-
-                <div className="org-list-section">
-                  <div className="org-list-container">
-                    <table className="org-table">
-                    <thead>
-                      <tr>
-                        <th>Committee Name</th>
-                        <th>Organization</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {committees.map((committee) => (
-                        <tr key={committee.id}>
-                          <td>{committee.name}</td>
-                          <td>{committee.organization}</td>
-                          <td>
-                            <span className={`status-badge ${committee.status.toLowerCase()}`}>{committee.status}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Officers Tab */}
-            {activeTab === 'officers' && (
-              <div className="org-tab-content">
-                <div className="org-search-form">
-                  <input
-                    type="text"
-                    placeholder="Search officer..."
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    name="search"
-                    className="org-search-input"
-                  />
-                  <button className="save-org-btn" onClick={() => setShowAddModal(true)}>
-                    + New
-                  </button>
-                </div>
-
-                <div className="org-list-section">
-                  <div className="org-list-container">
-                    <table className="org-table">
-                    <thead>
-                      <tr>
-                        <th>Officer Name</th>
-                        <th>Position</th>
-                        <th>Organization</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {officers.map((officer) => (
-                        <tr key={officer.id}>
-                          <td>{officer.name}</td>
-                          <td>{officer.position}</td>
-                          <td>{officer.organization}</td>
-                          <td>
-                            <span className={`status-badge ${officer.status.toLowerCase()}`}>{officer.status}</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {error && <div className="error-message">{error}</div>}
-          </div>
-
-          {/* Add Organization Modal */}
-          {showAddModal && (
-            <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <h2>Add New Organization</h2>
-                <form onSubmit={handleAddOrganization} className="org-form">
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Organization Name *</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      />
                     </div>
-                    <div className="form-group">
-                      <label>Region *</label>
-                      <select
-                        required
-                        value={formData.region}
-                        onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      >
-                        <option value="">Select Region</option>
-                        <option value="NCR">NCR</option>
-                        <option value="Region 1">Region 1</option>
-                        <option value="Region 2">Region 2</option>
-                      </select>
+                  )}
+
+                  {/* ── Committee Tab ─────────────────────────────────────────── */}
+                  {activeTab === 'committee' && (
+                    <div className="org-list-container">
+                      <table className="org-table">
+                        <thead>
+                          <tr>
+                            <th>Committee Name</th>
+                            <th>Chairman</th>
+                            <th>Organization</th>
+                            <th>Members</th>
+                            <th>Date Formed</th>
+                            {(canUpdate(user) || canDelete(user)) && <th>Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredCommittees.length === 0 ? (
+                            <tr><td colSpan="6" className="empty-text">No committees found.</td></tr>
+                          ) : (
+                            filteredCommittees.map((c) => (
+                              <tr key={c._id}>
+                                <td>{c.name}</td>
+                                <td>{c.chairman}</td>
+                                <td>{c.organization}</td>
+                                <td>{c.members}</td>
+                                <td>{c.dateFormed?.slice(0, 10)}</td>
+                                {(canUpdate(user) || canDelete(user)) && (
+                                  <td className="actions-cell">
+                                    {canUpdate(user) && (
+                                      <button className="edit-btn" onClick={() => openEditCommittee(c)}>Edit</button>
+                                    )}
+                                    {canDelete(user) && (
+                                      <button className="delete-btn" onClick={() => handleDeleteCommittee(c._id)}>Delete</button>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="form-group">
-                    <label>Address</label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Contact Person</label>
-                      <input
-                        type="text"
-                        value={formData.contactPerson}
-                        onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                      />
+                  {/* ── Officers Tab ──────────────────────────────────────────── */}
+                  {activeTab === 'officers' && (
+                    <div className="org-list-container">
+                      <table className="org-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Position</th>
+                            <th>Organization</th>
+                            <th>Appointment Date</th>
+                            {(canUpdate(user) || canDelete(user)) && <th>Actions</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredOfficers.length === 0 ? (
+                            <tr><td colSpan="5" className="empty-text">No officers found.</td></tr>
+                          ) : (
+                            filteredOfficers.map((o) => (
+                              <tr key={o._id}>
+                                <td>{o.name}</td>
+                                <td>{o.position}</td>
+                                <td>{o.organization}</td>
+                                <td>{o.appointmentDate?.slice(0, 10)}</td>
+                                {(canUpdate(user) || canDelete(user)) && (
+                                  <td className="actions-cell">
+                                    {canUpdate(user) && (
+                                      <button className="edit-btn" onClick={() => openEditOfficer(o)}>Edit</button>
+                                    )}
+                                    {canDelete(user) && (
+                                      <button className="delete-btn" onClick={() => handleDeleteOfficer(o._id)}>Delete</button>
+                                    )}
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                    <div className="form-group">
-                      <label>Contact Number</label>
-                      <input
-                        type="text"
-                        value={formData.contactNumber}
-                        onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Status</label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-
-                  <div className="modal-buttons">
-                    <button type="submit" className="submit-btn">
-                      Save Organization
-                    </button>
-                    <button type="button" className="cancel-btn" onClick={() => setShowAddModal(false)}>
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
+                  )}
+                </>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
+
+      {/* ── Add/Edit Organization Modal ────────────────────────────────────────── */}
+      {modal === 'org' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingId ? 'Edit Organization' : 'Add Organization'}</h2>
+            {formError && <div className="error-message">{formError}</div>}
+            <form className="org-form" onSubmit={handleOrgSubmit}>
+              <div className="form-group">
+                <label>Organization Name <span className="required">*</span></label>
+                <input
+                  required
+                  value={orgForm.name}
+                  onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })}
+                  placeholder="e.g. Tondo Fishing Association"
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Category <span className="required">*</span></label>
+                  <select
+                    required
+                    value={orgForm.category}
+                    onChange={(e) => setOrgForm({ ...orgForm, category: e.target.value })}
+                  >
+                    <option value="Association">Association</option>
+                    <option value="Cooperative">Cooperative</option>
+                    <option value="Union">Union</option>
+                    <option value="Federation">Federation</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <select
+                    value={orgForm.status}
+                    onChange={(e) => setOrgForm({ ...orgForm, status: e.target.value })}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Registration Date <span className="required">*</span></label>
+                  <input
+                    type="date"
+                    required
+                    value={orgForm.registrationDate}
+                    onChange={(e) => setOrgForm({ ...orgForm, registrationDate: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Contact Person</label>
+                  <input
+                    value={orgForm.contactPerson}
+                    onChange={(e) => setOrgForm({ ...orgForm, contactPerson: e.target.value })}
+                    placeholder="e.g. Juan Santos"
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Address</label>
+                <input
+                  value={orgForm.address}
+                  onChange={(e) => setOrgForm({ ...orgForm, address: e.target.value })}
+                  placeholder="Barangay, City"
+                />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="cancel-btn" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="submit-btn" disabled={submitting}>
+                  {submitting ? 'Saving...' : (editingId ? 'Update' : 'Add Organization')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add/Edit Committee Modal ──────────────────────────────────────────── */}
+      {modal === 'committee' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingId ? 'Edit Committee' : 'Add Committee'}</h2>
+            {formError && <div className="error-message">{formError}</div>}
+            <form className="org-form" onSubmit={handleCommitteeSubmit}>
+              <div className="form-group">
+                <label>Committee Name <span className="required">*</span></label>
+                <input
+                  required
+                  value={committeeForm.name}
+                  onChange={(e) => setCommitteeForm({ ...committeeForm, name: e.target.value })}
+                  placeholder="e.g. Management Committee"
+                />
+              </div>
+              <div className="form-group">
+                <label>Organization <span className="required">*</span></label>
+                {orgNames.length > 0 ? (
+                  <select
+                    required
+                    value={committeeForm.organization}
+                    onChange={(e) => setCommitteeForm({ ...committeeForm, organization: e.target.value })}
+                  >
+                    <option value="">-- Select Organization --</option>
+                    {orgNames.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    required
+                    value={committeeForm.organization}
+                    onChange={(e) => setCommitteeForm({ ...committeeForm, organization: e.target.value })}
+                    placeholder="Organization name"
+                  />
+                )}
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Chairman <span className="required">*</span></label>
+                  <input
+                    required
+                    value={committeeForm.chairman}
+                    onChange={(e) => setCommitteeForm({ ...committeeForm, chairman: e.target.value })}
+                    placeholder="e.g. SANTOS, JUAN"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Number of Members</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={committeeForm.members}
+                    onChange={(e) => setCommitteeForm({ ...committeeForm, members: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Date Formed <span className="required">*</span></label>
+                <input
+                  type="date"
+                  required
+                  value={committeeForm.dateFormed}
+                  onChange={(e) => setCommitteeForm({ ...committeeForm, dateFormed: e.target.value })}
+                />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="cancel-btn" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="submit-btn" disabled={submitting}>
+                  {submitting ? 'Saving...' : (editingId ? 'Update' : 'Add Committee')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add/Edit Officer Modal ────────────────────────────────────────────── */}
+      {modal === 'officer' && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingId ? 'Edit Officer' : 'Add Officer'}</h2>
+            {formError && <div className="error-message">{formError}</div>}
+            <form className="org-form" onSubmit={handleOfficerSubmit}>
+              <div className="form-group">
+                <label>Full Name <span className="required">*</span></label>
+                <input
+                  required
+                  value={officerForm.name}
+                  onChange={(e) => setOfficerForm({ ...officerForm, name: e.target.value })}
+                  placeholder="e.g. SANTOS, JUAN"
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Position <span className="required">*</span></label>
+                  <input
+                    required
+                    value={officerForm.position}
+                    onChange={(e) => setOfficerForm({ ...officerForm, position: e.target.value })}
+                    placeholder="e.g. Chairman"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Appointment Date <span className="required">*</span></label>
+                  <input
+                    type="date"
+                    required
+                    value={officerForm.appointmentDate}
+                    onChange={(e) => setOfficerForm({ ...officerForm, appointmentDate: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Organization <span className="required">*</span></label>
+                {orgNames.length > 0 ? (
+                  <select
+                    required
+                    value={officerForm.organization}
+                    onChange={(e) => setOfficerForm({ ...officerForm, organization: e.target.value })}
+                  >
+                    <option value="">-- Select Organization --</option>
+                    {orgNames.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    required
+                    value={officerForm.organization}
+                    onChange={(e) => setOfficerForm({ ...officerForm, organization: e.target.value })}
+                    placeholder="Organization name"
+                  />
+                )}
+              </div>
+              <div className="form-actions">
+                <button type="button" className="cancel-btn" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="submit-btn" disabled={submitting}>
+                  {submitting ? 'Saving...' : (editingId ? 'Update' : 'Add Officer')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

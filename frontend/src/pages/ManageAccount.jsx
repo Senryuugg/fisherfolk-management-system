@@ -5,10 +5,13 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import { canCreateUsers, canDelete, canUpdate, isAdmin, isViewer, ROLES, getRoleDisplayName } from '../utils/permissions';
+import {
+  canCreateUsers, canDelete, canUpdate, isTopAdmin,
+  ROLES, getRoleDisplayName, getRoleBadgeColor, getCreatableRoles,
+  isLguSupervisor, isBfarSupervisor,
+} from '../utils/permissions';
+import { usersAPI } from '../services/api';
 import '../styles/ManageAccount.css';
-
-const API_URL = 'http://localhost:5000/api';
 
 export default function ManageAccount() {
   const { user, logout, updateUser } = useContext(AuthContext);
@@ -21,42 +24,33 @@ export default function ManageAccount() {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const [formData, setFormData] = useState({
+  const defaultForm = {
     username: '',
     email: '',
     password: '',
     fullName: '',
-    role: 'lgu',
-    department: 'bfar',
+    role: 'lgu_editor',
+    department: 'lgu',
+    city: '',
     region: '',
     active: true,
-  });
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
   };
 
-  // Fetch users
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [formData, setFormData] = useState(defaultForm);
+
+  const handleLogout = () => { logout(); navigate('/login'); };
+
+  useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/auth/users`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch users');
-      const data = await response.json();
-      setUsers(data);
+      const response = await usersAPI.getAll();
+      setUsers(response.data || []);
     } catch (err) {
-      setError(err.message);
+      setError('Failed to fetch users. ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -64,25 +58,25 @@ export default function ManageAccount() {
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  // Auto-set department based on role
+  const handleRoleChange = (e) => {
+    const role = e.target.value;
+    let dept = formData.department;
+    if ([ROLES.BFAR_SUPERVISOR, ROLES.BFAR_VIEWER].includes(role)) dept = 'bfar';
+    if ([ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(role)) dept = 'lgu';
+    if (role === ROLES.ADMIN) dept = 'admin';
+    setFormData(prev => ({ ...prev, role, department: dept }));
   };
 
   const handleAddClick = () => {
     setIsEditing(false);
     setEditingId(null);
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      fullName: '',
-      role: 'lgu',
-      department: 'bfar',
-      region: '',
-      active: true,
-    });
+    const defaultRole = user?.role === ROLES.LGU_SUPERVISOR ? ROLES.LGU_EDITOR :
+                        user?.role === ROLES.BFAR_SUPERVISOR ? ROLES.BFAR_VIEWER : ROLES.LGU_EDITOR;
+    setFormData({ ...defaultForm, role: defaultRole });
     setShowForm(true);
     setError('');
   };
@@ -91,14 +85,15 @@ export default function ManageAccount() {
     setIsEditing(true);
     setEditingId(userData._id);
     setFormData({
-      username: userData.username,
-      email: userData.email,
+      username: userData.username || '',
+      email: userData.email || '',
       password: '',
-      fullName: userData.fullName,
-      role: userData.role,
-      department: userData.department || 'bfar',
+      fullName: userData.fullName || '',
+      role: userData.role || 'lgu_user',
+      department: userData.department || 'lgu',
+      city: userData.city || '',
       region: userData.region || '',
-      active: userData.active,
+      active: userData.active !== false,
     });
     setShowForm(true);
     setError('');
@@ -109,115 +104,63 @@ export default function ManageAccount() {
     setError('');
     setSuccessMessage('');
 
+    // Validate required fields
     if (!formData.username || !formData.email || !formData.fullName) {
-      setError('Please fill in all required fields');
+      setError('Username, Email, and Full Name are required');
       return;
     }
-
-    if (isEditing && !formData.password) {
-      // For editing, password is optional
-    } else if (!isEditing && !formData.password) {
+    if (!isEditing && !formData.password) {
       setError('Password is required for new users');
       return;
     }
 
     try {
-      let url, method, body;
-
       if (isEditing) {
-        url = `${API_URL}/auth/users/${editingId}`;
-        method = 'PUT';
-        body = {
+        const body = {
           username: formData.username,
           email: formData.email,
           fullName: formData.fullName,
           role: formData.role,
           department: formData.department,
+          city: formData.city,
           region: formData.region,
           active: formData.active,
         };
-        if (formData.password) {
-          body.password = formData.password;
+        if (formData.password) body.password = formData.password;
+
+        const response = await usersAPI.update(editingId, body);
+
+        // Update AuthContext if editing self
+        if (user && (editingId === user._id || editingId === user.id)) {
+          updateUser({ username: body.username, email: body.email, fullName: body.fullName, role: body.role });
         }
+
+        setSuccessMessage('User updated successfully');
       } else {
-        // Use the protected user creation endpoint
-        url = `${API_URL}/auth/users`;
-        method = 'POST';
-        body = formData;
+        await usersAPI.create(formData);
+        setSuccessMessage('User created successfully');
       }
 
-      const token = localStorage.getItem('token');
-
-      console.log('[v0] Creating/updating user with data:', body);
-      console.log('[v0] Request URL:', url);
-
-      const response = await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      console.log('[v0] Response status:', response.status);
-      console.log('[v0] Response headers:', response.headers.get('content-type'));
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('[v0] Non-JSON response received:', text.substring(0, 500));
-        throw new Error(`Server returned non-JSON response. Status: ${response.status}. This usually means the API endpoint is not found or there's a server error.`);
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('[v0] Error response:', errorData);
-        throw new Error(errorData.message || 'Failed to save user');
-      }
-
-      const updatedUserData = await response.json();
-      console.log('[v0] User update response:', updatedUserData);
-
-      // If editing current user, update the AuthContext
-      if (isEditing && user && (editingId === user._id || editingId === user.id)) {
-        console.log('[v0] Updating current user in AuthContext');
-        updateUser({
-          username: body.username,
-          email: body.email,
-          fullName: body.fullName,
-          role: body.role,
-          department: body.department,
-          region: body.region,
-        });
-      }
-
-      setSuccessMessage(isEditing ? 'User updated successfully' : 'User added successfully');
       setShowForm(false);
       fetchUsers();
     } catch (err) {
-      setError(err.message);
+      const msg = err.response?.data?.message || err.message;
+      if (err.response?.data?.duplicate) {
+        setError(`Duplicate: ${msg}`);
+      } else {
+        setError(msg);
+      }
     }
   };
 
   const handleDeleteClick = async (id) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
+    if (window.confirm('Are you sure you want to delete this user? This cannot be undone.')) {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/auth/users/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) throw new Error('Failed to delete user');
-
+        await usersAPI.delete(id);
         setSuccessMessage('User deleted successfully');
         fetchUsers();
       } catch (err) {
-        setError(err.message);
+        setError(err.response?.data?.message || 'Failed to delete user');
       }
     }
   };
@@ -228,6 +171,27 @@ export default function ManageAccount() {
     setIsEditing(false);
     setEditingId(null);
   };
+
+  // Determine which users this user can edit/delete
+  const canEditUser = (targetUser) => {
+    if (isTopAdmin(user)) return true;
+    if (isLguSupervisor(user) && [ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(targetUser.role)) return true;
+    if (isBfarSupervisor(user) && targetUser.role !== ROLES.ADMIN) return true;
+    return user?._id === targetUser._id || user?.id === targetUser._id;
+  };
+
+  const canDeleteUser = (targetUser) => {
+    if (!isTopAdmin(user)) return false;
+    return user?._id !== targetUser._id && user?.id !== targetUser._id;
+  };
+
+  const creatableRoles = getCreatableRoles(user);
+  const filteredUsers = users.filter(u =>
+    !searchTerm ||
+    u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="dashboard-container">
@@ -243,15 +207,23 @@ export default function ManageAccount() {
               <div className="manage-header">
                 <h2>User Management</h2>
                 {canCreateUsers(user) && (
-                  <button className="add-btn" onClick={handleAddClick}>
-                    + Add New User
-                  </button>
+                  <button className="add-btn" onClick={handleAddClick}>+ Add New User</button>
                 )}
+              </div>
+
+              {/* Search */}
+              <div className="user-search-bar">
+                <input
+                  type="text"
+                  placeholder="Search by name, username, or email..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
               </div>
 
               {loading ? (
                 <p>Loading users...</p>
-              ) : users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <p>No users found</p>
               ) : (
                 <div className="table-section">
@@ -259,51 +231,57 @@ export default function ManageAccount() {
                     <thead>
                       <tr>
                         <th>Username</th>
-                        <th>Email</th>
                         <th>Full Name</th>
+                        <th>Email</th>
                         <th>Role</th>
                         <th>Department</th>
+                        <th>City</th>
                         <th>Region</th>
                         <th>Status</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {users.map((userData) => (
-                        <tr key={userData._id}>
-                          <td>{userData.username}</td>
-                          <td>{userData.email}</td>
-                          <td>{userData.fullName}</td>
-                          <td>
-                            <span className="role-badge">{getRoleDisplayName(userData.role)}</span>
-                          </td>
-                          <td>{userData.department}</td>
-                          <td>{userData.region || '-'}</td>
-                          <td>
-                            <span className={`status-badge ${userData.active ? 'active' : 'inactive'}`}>
-                              {userData.active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td>
-                            {(isAdmin(user) || user.id === userData._id || user._id === userData._id) && (
-                              <button
-                                className="edit-btn"
-                                onClick={() => handleEditClick(userData)}
+                      {filteredUsers.map((userData) => {
+                        const badgeStyle = getRoleBadgeColor(userData.role);
+                        return (
+                          <tr key={userData._id}>
+                            <td>{userData.username}</td>
+                            <td>{userData.fullName}</td>
+                            <td>{userData.email}</td>
+                            <td>
+                              <span
+                                className="role-badge"
+                                style={{ background: badgeStyle.bg, color: badgeStyle.text }}
                               >
-                                Edit
-                              </button>
-                            )}
-                            {canDelete(user) && (
-                              <button
-                                className="delete-btn"
-                                onClick={() => handleDeleteClick(userData._id)}
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                                {getRoleDisplayName(userData.role)}
+                              </span>
+                            </td>
+                            <td>{userData.department || '-'}</td>
+                            <td>{userData.city || '-'}</td>
+                            <td>{userData.region || '-'}</td>
+                            <td>
+                              <span className={`status-badge ${userData.active !== false ? 'active' : 'inactive'}`}>
+                                {userData.active !== false ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                {canEditUser(userData) && (
+                                  <button className="edit-btn" onClick={() => handleEditClick(userData)}>
+                                    Edit
+                                  </button>
+                                )}
+                                {canDeleteUser(userData) && (
+                                  <button className="delete-btn" onClick={() => handleDeleteClick(userData._id)}>
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -341,14 +319,15 @@ export default function ManageAccount() {
                   </div>
 
                   <div className="form-group">
-                    <label>Password {isEditing ? '(Leave blank to keep current)' : '*'}</label>
+                    <label>Password {isEditing ? '(leave blank to keep)' : '*'}</label>
                     <input
                       type="password"
                       name="password"
                       value={formData.password}
                       onChange={handleFormChange}
-                      placeholder={isEditing ? 'Leave blank to keep current password' : 'Enter password'}
+                      placeholder={isEditing ? 'Leave blank to keep current' : 'Enter password (min 6 chars)'}
                       required={!isEditing}
+                      minLength={6}
                     />
                   </div>
 
@@ -364,30 +343,47 @@ export default function ManageAccount() {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label>Role</label>
-                    <select name="role" value={formData.role} onChange={handleFormChange} disabled={isViewer(user)}>
-                      {isAdmin(user) && <option value={ROLES.ADMIN}>Super Admin</option>}
-                      {isAdmin(user) && <option value={ROLES.VIEWER}>Viewer</option>}
-                      <option value={ROLES.LGU}>LGU User</option>
-                    </select>
-                    {isViewer(user) && (
-                      <small className="help-text">Viewers can only create LGU user accounts</small>
-                    )}
-                  </div>
+                  {creatableRoles.length > 0 && (
+                    <div className="form-group">
+                      <label>Role *</label>
+                      <select name="role" value={formData.role} onChange={handleRoleChange} required>
+                        {creatableRoles.map(role => (
+                          <option key={role} value={role}>{getRoleDisplayName(role)}</option>
+                        ))}
+                      </select>
+                      <small className="help-text">
+                        {formData.role === ROLES.LGU_EDITOR      && 'LGU Editors submit data that goes to approval queue'}
+                        {formData.role === ROLES.LGU_SUPERVISOR   && 'LGU Supervisors approve submissions and manage their city data'}
+                        {formData.role === ROLES.BFAR_VIEWER      && 'BFAR Viewers have read-only access to all data'}
+                        {formData.role === ROLES.BFAR_SUPERVISOR  && 'BFAR Supervisors have full data access, manage users, and approve submissions'}
+                        {formData.role === ROLES.ADMIN            && 'Admin has complete system access'}
+                      </small>
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label>Department</label>
-                    <select
-                      name="department"
-                      value={formData.department}
-                      onChange={handleFormChange}
-                    >
+                    <select name="department" value={formData.department} onChange={handleFormChange}>
                       <option value="bfar">BFAR</option>
                       <option value="lgu">LGU</option>
-                      <option value="admin">Admin</option>
+                      {isTopAdmin(user) && <option value="admin">Admin</option>}
                     </select>
                   </div>
+
+                  {[ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(formData.role) && (
+                    <div className="form-group">
+                      <label>City / Municipality *</label>
+                      <input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleFormChange}
+                        placeholder="e.g. Navotas, Malabon"
+                        required
+                      />
+                      <small className="help-text">LGU users can only see data for their assigned city</small>
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label>Region</label>
@@ -396,26 +392,28 @@ export default function ManageAccount() {
                       name="region"
                       value={formData.region}
                       onChange={handleFormChange}
-                      placeholder="Enter region"
+                      placeholder="e.g. NCR, Region 1"
                     />
                   </div>
 
-                  <div className="form-group checkbox">
-                    <label>
-                      <input
-                        type="checkbox"
-                        name="active"
-                        checked={formData.active}
-                        onChange={handleFormChange}
-                      />
-                      <span>Active</span>
-                    </label>
-                  </div>
+                  {(isTopAdmin(user) || isLguSupervisor(user) || isBfarSupervisor(user)) && (
+                    <div className="form-group checkbox">
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="active"
+                          checked={formData.active}
+                          onChange={handleFormChange}
+                        />
+                        <span>Active Account</span>
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-buttons">
                   <button type="submit" className="submit-btn">
-                    {isEditing ? 'Update User' : 'Add User'}
+                    {isEditing ? 'Update User' : 'Create User'}
                   </button>
                   <button type="button" className="cancel-btn" onClick={handleCancel}>
                     Cancel

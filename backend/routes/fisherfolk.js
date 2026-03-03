@@ -1,11 +1,13 @@
 import express from 'express';
 import Fisherfolk from '../models/Fisherfolk.js';
-import { authenticateToken } from '../middleware/auth.js';
+import Approval from '../models/Approval.js';
+import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
+import { createAuditLog } from './auditLogs.js';
 
 const router = express.Router();
 
 // Get all fisherfolk with filters
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, canRead, async (req, res) => {
   try {
     const { province, city, barangay, status, search } = req.query;
     let query = {};
@@ -22,9 +24,12 @@ router.get('/', authenticateToken, async (req, res) => {
       ];
     }
 
-    console.log('[v0] Fisherfolk query:', query);
+    // LGU users can only see data for their city
+    if (req.user.role === 'lgu_admin' || req.user.role === 'lgu_user') {
+      if (req.user.city) query.cityMunicipality = req.user.city;
+    }
+
     const fisherfolk = await Fisherfolk.find(query).populate('boats');
-    console.log('[v0] Fisherfolk count returned:', fisherfolk.length);
     res.json(fisherfolk);
   } catch (error) {
     console.error('[v0] Error fetching fisherfolk:', error);
@@ -33,7 +38,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single fisherfolk
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, canRead, async (req, res) => {
   try {
     const fisherfolk = await Fisherfolk.findById(req.params.id).populate('boats');
     if (!fisherfolk) {
@@ -45,11 +50,86 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Create fisherfolk
-router.post('/', authenticateToken, async (req, res) => {
+// Create fisherfolk — lgu_user submissions go to approval queue
+router.post('/', authenticateToken, canCreate, async (req, res) => {
   try {
+    const { rsbsaNumber, firstName, lastName, cityMunicipality } = req.body;
+
+    // Required field validation
+    if (!rsbsaNumber || !firstName || !lastName) {
+      return res.status(400).json({ message: 'RSBSA Number, First Name, and Last Name are required' });
+    }
+
+    // Duplicate detection: check by RSBSA number
+    const existingByRsbsa = await Fisherfolk.findOne({ rsbsaNumber });
+    if (existingByRsbsa) {
+      return res.status(409).json({
+        message: `Duplicate record: A fisherfolk with RSBSA Number "${rsbsaNumber}" already exists.`,
+        duplicate: true,
+        existingId: existingByRsbsa._id,
+      });
+    }
+
+    // Duplicate detection: same full name + city
+    const existingByName = await Fisherfolk.findOne({
+      firstName: { $regex: `^${firstName}$`, $options: 'i' },
+      lastName: { $regex: `^${lastName}$`, $options: 'i' },
+      cityMunicipality: cityMunicipality || { $exists: true },
+    });
+    if (existingByName) {
+      return res.status(409).json({
+        message: `Possible duplicate: A fisherfolk named "${firstName} ${lastName}" in the same city already exists. Please verify.`,
+        duplicate: true,
+        possibleDuplicate: true,
+        existingId: existingByName._id,
+      });
+    }
+
+    // LGU users submit for approval
+    if (req.user.role === 'lgu_user') {
+      const approval = new Approval({
+        submittedBy: req.user.id,
+        submittedByUsername: req.user.username,
+        submittedByCity: req.user.city,
+        resource: 'fisherfolk',
+        action: 'create',
+        data: req.body,
+      });
+      await approval.save();
+
+      await createAuditLog({
+        userId: req.user.id,
+        username: req.user.username,
+        userRole: req.user.role,
+        action: 'create',
+        resource: 'fisherfolk',
+        resourceId: approval._id,
+        details: { pendingApproval: true, rsbsaNumber, firstName, lastName },
+        req,
+      });
+
+      return res.status(202).json({
+        message: 'Fisherfolk record submitted for approval',
+        pendingApproval: true,
+        approvalId: approval._id,
+      });
+    }
+
+    // Admin/BFAR users save directly
     const fisherfolk = new Fisherfolk(req.body);
     await fisherfolk.save();
+
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'create',
+      resource: 'fisherfolk',
+      resourceId: fisherfolk._id,
+      details: { rsbsaNumber, firstName, lastName },
+      req,
+    });
+
     res.status(201).json(fisherfolk);
   } catch (error) {
     res.status(400).json({ message: 'Error creating fisherfolk', error: error.message });
@@ -57,11 +137,22 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update fisherfolk
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, canUpdate, async (req, res) => {
   try {
-    const fisherfolk = await Fisherfolk.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    const prev = await Fisherfolk.findById(req.params.id);
+    const fisherfolk = await Fisherfolk.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'update',
+      resource: 'fisherfolk',
+      resourceId: fisherfolk._id,
+      details: { changes: req.body, previous: prev },
+      req,
     });
+
     res.json(fisherfolk);
   } catch (error) {
     res.status(400).json({ message: 'Error updating fisherfolk', error: error.message });
@@ -69,9 +160,21 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete fisherfolk
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
   try {
-    await Fisherfolk.findByIdAndDelete(req.params.id);
+    const fisherfolk = await Fisherfolk.findByIdAndDelete(req.params.id);
+
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'delete',
+      resource: 'fisherfolk',
+      resourceId: req.params.id,
+      details: { deletedRecord: fisherfolk },
+      req,
+    });
+
     res.json({ message: 'Fisherfolk deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting fisherfolk', error: error.message });

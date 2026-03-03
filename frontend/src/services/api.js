@@ -75,13 +75,25 @@ export const officersAPI = {
   delete: (id) => api.delete(`/officers/${id}`),
 };
 
-// Ordinances & Resolutions
+// Ordinances & Resolutions (Document Management)
 export const ordinancesAPI = {
-  getAll: (params) => api.get('/ordinances', { params }),
-  getById: (id) => api.get(`/ordinances/${id}`),
-  create: (data) => api.post('/ordinances', data),
-  update: (id, data) => api.put(`/ordinances/${id}`, data),
-  delete: (id) => api.delete(`/ordinances/${id}`),
+  getAll:               (params) => api.get('/ordinances', { params }),
+  getById:              (id) => api.get(`/ordinances/${id}`),
+  create:               (data) => api.post('/ordinances', data),
+  update:               (id, data) => api.put(`/ordinances/${id}`, data),
+  delete:               (id) => api.delete(`/ordinances/${id}`),
+  uploadFile:           (id, formData, onProgress) =>
+    api.post(`/ordinances/${id}/upload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress,
+    }),
+  getDownloadUrl:       (id) => `${API_URL}/ordinances/${id}/download`,
+  getVersionDownloadUrl:(id, v) => `${API_URL}/ordinances/${id}/versions/${v}/download`,
+  restoreVersion:       (id, versionNumber) =>
+    api.post(`/ordinances/${id}/versions/${versionNumber}/restore`),
+  batchDownload:        (ids) =>
+    api.post('/ordinances/batch-download', { ids }, { responseType: 'blob' }),
+  generateShareLink:    (id) => api.post(`/ordinances/${id}/share`),
 };
 
 // FAQs
@@ -120,6 +132,7 @@ export const mapsAPI = {
   getById: (id) => api.get(`/maps/${id}`),
   create: (data) => api.post('/maps', data),
   update: (id, data) => api.put(`/maps/${id}`, data),
+  getCityStats: () => api.get('/maps/city-stats'),
   calculateBuffer: (data) => api.post('/maps/buffer/calculate', data),
   toggleVisibility: (id) => api.post(`/maps/${id}/toggle-visibility`),
   delete: (id) => api.delete(`/maps/${id}`),
@@ -134,6 +147,29 @@ export const reportsAPI = {
   getBoatsAndGearsStats: (params) => api.get('/reports/boats-gears-stats', { params }),
   getDashboardStats: () => api.get('/reports/dashboard-stats'),
   exportCSV: (reportType, params) => api.get(`/reports/${reportType}/export`, { params, responseType: 'blob' }),
+};
+
+// Audit Logs
+export const auditLogsAPI = {
+  getAll: (params) => api.get('/audit-logs', { params }),
+  getStats: () => api.get('/audit-logs/stats'),
+};
+
+// Approvals
+export const approvalsAPI = {
+  getAll: (params) => api.get('/approvals', { params }),
+  getCount: () => api.get('/approvals/count'),
+  approve: (id, data) => api.post(`/approvals/${id}/approve`, data),
+  reject: (id, data) => api.post(`/approvals/${id}/reject`, data),
+};
+
+// User management
+export const usersAPI = {
+  getAll: () => api.get('/auth/users'),
+  getById: (id) => api.get(`/auth/users/${id}`),
+  create: (data) => api.post('/auth/users', data),
+  update: (id, data) => api.put(`/auth/users/${id}`, data),
+  delete: (id) => api.delete(`/auth/users/${id}`),
 };
 
 export default api;

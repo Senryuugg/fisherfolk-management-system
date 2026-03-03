@@ -177,8 +177,6 @@ router.get('/boats-gears-stats', authenticateToken, async (req, res) => {
 // Get comprehensive dashboard statistics
 router.get('/dashboard-stats', authenticateToken, async (req, res) => {
   try {
-    console.log('[v0] Fetching dashboard statistics...');
-
     const [fisherfolkStats, boatsStats, gearsStats, organizationCount] = await Promise.all([
       // Fisherfolk statistics
       Fisherfolk.aggregate([
@@ -288,8 +286,6 @@ router.get('/dashboard-stats', authenticateToken, async (req, res) => {
       Fisherfolk.distinct('province').then(provinces => provinces.length),
     ]);
 
-    console.log('[v0] Dashboard stats fetched successfully');
-    
     res.json({
       fisherfolk: fisherfolkStats[0],
       boats: boatsStats[0],
@@ -297,7 +293,6 @@ router.get('/dashboard-stats', authenticateToken, async (req, res) => {
       organizationCount,
     });
   } catch (error) {
-    console.error('[v0] Error generating dashboard statistics:', error);
     res.status(500).json({ message: 'Error generating dashboard statistics', error: error.message });
   }
 });

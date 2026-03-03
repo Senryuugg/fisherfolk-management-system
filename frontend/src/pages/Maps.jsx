@@ -3,6 +3,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { mapsAPI } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import '../styles/Maps.css';
@@ -193,6 +194,9 @@ export default function Maps() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMangroves, setFilterMangroves] = useState('all');
   const [showLegend, setShowLegend] = useState(true);
+
+  // Live city stats from backend
+  const [cityStats, setCityStats] = useState({}); // keyed by city name
   
   // Layer management
   const [activeLayers, setActiveLayers] = useState({
@@ -227,7 +231,21 @@ export default function Maps() {
 
   useEffect(() => {
     loadLeaflet();
+    fetchCityStats();
   }, []);
+
+  const fetchCityStats = async () => {
+    try {
+      const res = await mapsAPI.getCityStats();
+      const map = {};
+      (res.data || []).forEach((s) => {
+        if (s.city) map[s.city] = s;
+      });
+      setCityStats(map);
+    } catch (err) {
+      // Non-fatal: city stats panel will just show no live data
+    }
+  };
 
   // Handle layer visibility
   useEffect(() => {
@@ -852,6 +870,29 @@ export default function Maps() {
                   <div className="info-section">
                     <h4>Description</h4>
                     <p>{selectedCity.description}</p>
+                  </div>
+
+                  {/* Live database stats */}
+                  <div className="info-section city-live-stats">
+                    <h4>Live Database Stats</h4>
+                    {cityStats[selectedCity.name] ? (
+                      <div className="live-stats-grid">
+                        <div className="live-stat">
+                          <span className="live-stat-label">Registered Fisherfolk</span>
+                          <span className="live-stat-value">{cityStats[selectedCity.name].fisherfolk ?? 0}</span>
+                        </div>
+                        <div className="live-stat">
+                          <span className="live-stat-label">Registered Boats</span>
+                          <span className="live-stat-value">{cityStats[selectedCity.name].boats ?? 0}</span>
+                        </div>
+                        <div className="live-stat">
+                          <span className="live-stat-label">Organizations</span>
+                          <span className="live-stat-value">{cityStats[selectedCity.name].organizations ?? 0}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="no-stats">No records in database yet for this city.</p>
+                    )}
                   </div>
                 </div>
               </div>

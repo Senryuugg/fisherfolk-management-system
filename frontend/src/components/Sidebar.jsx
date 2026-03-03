@@ -4,21 +4,28 @@ import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { ThemeContext } from '../context/ThemeContext';
-import { canManageUsers } from '../utils/permissions';
+import { canViewAuditLog, canApprove, ROLES } from '../utils/permissions';
 import '../styles/Sidebar.css';
 
+const ALL_ROLES    = [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.BFAR_VIEWER, ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR];
+const WRITE_ROLES  = [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR];
+const ADMIN_TIER   = [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR];
+const APPROVER_TIER= [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR];
+
 const menuItems = [
-  { id: 'dashboard', label: 'DASHBOARD', icon: '🏠', path: '/dashboard', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'fisherfolk-list', label: 'FISHERFOLK LIST', icon: '📋', path: '/fisherfolk-list', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'boats-gears', label: 'LIST OF BOATS AND GEARS', icon: '🚢', path: '/boats-gears', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'report', label: 'REPORT', icon: '📊', path: '/report', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'levels', label: 'LEVELS OF DEVELOPMENT', icon: '📈', path: '/levels', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'ordinance', label: 'ORDINANCE & RESOLUTION', icon: '📄', path: '/ordinance', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'organization', label: 'ORGANIZATION', icon: '👥', path: '/organization', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'maps', label: 'MAPS', icon: '🗺️', path: '/maps', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'help-desk', label: 'HELP DESK', icon: '💬', path: '/help-desk', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'manage-account', label: 'MANAGE ACCOUNT', icon: '⚙️', path: '/manage-account', roles: ['admin', 'viewer', 'lgu'] },
-  { id: 'faqs', label: 'FAQs', icon: '❓', path: '/faqs', roles: ['admin', 'viewer', 'lgu'] },
+  { id: 'dashboard',      label: 'DASHBOARD',              icon: '🏠', path: '/dashboard',      roles: ALL_ROLES },
+  { id: 'fisherfolk-list',label: 'FISHERFOLK LIST',         icon: '📋', path: '/fisherfolk-list', roles: ALL_ROLES },
+  { id: 'boats-gears',    label: 'LIST OF BOATS AND GEARS', icon: '🚢', path: '/boats-gears',    roles: ALL_ROLES },
+  { id: 'report',         label: 'REPORT',                  icon: '📊', path: '/report',         roles: ALL_ROLES },
+  { id: 'levels',         label: 'LEVELS OF DEVELOPMENT',   icon: '📈', path: '/levels',         roles: ALL_ROLES },
+  { id: 'ordinance',      label: 'ORDINANCE & RESOLUTION',  icon: '📄', path: '/ordinance',      roles: ALL_ROLES },
+  { id: 'organization',   label: 'ORGANIZATION',            icon: '👥', path: '/organization',   roles: ALL_ROLES },
+  { id: 'maps',           label: 'MAPS',                    icon: '🗺️', path: '/maps',           roles: ALL_ROLES },
+  { id: 'help-desk',      label: 'HELP DESK',               icon: '💬', path: '/help-desk',      roles: ALL_ROLES },
+  { id: 'approvals',      label: 'APPROVALS',               icon: '✅', path: '/approvals',      roles: APPROVER_TIER },
+  { id: 'manage-account', label: 'MANAGE ACCOUNT',          icon: '⚙️', path: '/manage-account', roles: ALL_ROLES },
+  { id: 'audit-log',      label: 'AUDIT LOG',               icon: '🔍', path: '/audit-log',      roles: ADMIN_TIER },
+  { id: 'faqs',           label: 'FAQs',                    icon: '❓', path: '/faqs',           roles: ALL_ROLES },
 ];
 
 export default function Sidebar({ currentPage, setCurrentPage, onLogout }) {
@@ -27,7 +34,7 @@ export default function Sidebar({ currentPage, setCurrentPage, onLogout }) {
   const { theme, changeTheme } = useContext(ThemeContext);
 
   // Filter menu items based on user role
-  const filteredMenuItems = menuItems.filter(item => 
+  const filteredMenuItems = menuItems.filter(item =>
     !item.roles || item.roles.includes(user?.role)
   );
 

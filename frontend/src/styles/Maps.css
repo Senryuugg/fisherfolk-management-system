@@ -675,6 +675,51 @@
   background: #c0392b;
 }
 
+/* ─── Live database stats panel inside city details ──────────────────────── */
+.city-live-stats {
+  border-left-color: #10b981;
+}
+
+.city-live-stats h4 {
+  color: #065f46;
+}
+
+.live-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.live-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
+  background: white;
+  border-radius: 5px;
+  border: 1px solid #d1fae5;
+}
+
+.live-stat-label {
+  font-size: 12px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.live-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #065f46;
+  font-variant-numeric: tabular-nums;
+}
+
+.no-stats {
+  font-size: 12px;
+  color: #9ca3af;
+  font-style: italic;
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .maps-content {
     padding: 10px;
