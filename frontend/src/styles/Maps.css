@@ -122,44 +122,75 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  padding: 5px 0;
   font-size: 12px;
-  color: #666;
+  color: #555;
+}
+
+.legend-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin: 6px 0 2px;
+}
+
+/* Dot for district color swatches */
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.6);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
 }
 
 .legend-icon {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .mangrove-icon {
-  background: #2ecc71;
-  box-shadow: 0 0 0 1px #27ae60;
+  background: #27ae60;
+  opacity: 0.85;
 }
 
 .water-icon {
   background: #3498db;
-  box-shadow: 0 0 0 1px #2980b9;
+  opacity: 0.7;
 }
 
-.municipal-zone-icon {
-  background: #e67e22;
-  box-shadow: 0 0 0 1px #d35400;
-  border-radius: 3px;
+/* District badge on LGU list buttons */
+.district-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
-.commercial-zone-icon {
-  background: #8e44ad;
-  box-shadow: 0 0 0 1px #7d3c98;
-  border-radius: 3px;
+/* District label tag in detail card */
+.district-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-top: 4px;
 }
 
-.protected-zone-icon {
-  background: #c0392b;
-  box-shadow: 0 0 0 1px #a93226;
-  border-radius: 3px;
+/* Specialties list */
+.specialties-list {
+  margin: 4px 0 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.7;
 }
+
 
 .cities-panel {
   background: white;

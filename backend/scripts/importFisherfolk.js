@@ -49,7 +49,7 @@ const fixEncoding = (str) => {
     .trim();
 };
 
-// ─── Read one CSV file into an array of records ──────────────────���────────────
+// ─── Read one CSV file into an array of records ───────────────────────────────
 const readCSV = (filePath) =>
   new Promise((resolve, reject) => {
     const records = [];

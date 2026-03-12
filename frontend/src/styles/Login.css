@@ -109,15 +109,6 @@
   cursor: not-allowed;
 }
 
-.error-message {
-  padding: 12px;
-  background: #fee;
-  color: #c33;
-  border-radius: 6px;
-  font-size: 14px;
-  border: 1px solid #fcc;
-}
-
 .login-info-section {
   flex: 1;
   color: white;
@@ -151,6 +142,116 @@
   margin-top: 40px;
   opacity: 0.8;
 }
+
+/* ── OTP Step styles ──────────────────────────────────────────────────────── */
+.otp-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.otp-icon {
+  width: 60px;
+  height: 60px;
+  background: #eaf3fb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.otp-info-text {
+  text-align: center;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.otp-inputs {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0 24px;
+}
+
+.otp-digit-input {
+  width: 46px;
+  height: 54px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  font-family: monospace;
+  border: 2px solid #c7d8e8;
+  border-radius: 8px;
+  background: #f8fbfd;
+  color: #1a3a4a;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  caret-color: transparent;
+}
+
+.otp-digit-input:focus {
+  border-color: #1a3a4a;
+  box-shadow: 0 0 0 3px rgba(26,58,74,0.12);
+  background: #fff;
+}
+
+.info-message {
+  background: #e0f7ef;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.otp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+
+.otp-footer-text { color: #6b7280; }
+
+.otp-resend-timer { color: #94a3b8; font-size: 13px; }
+
+.otp-resend-btn {
+  background: none;
+  border: none;
+  color: #1a3a4a;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.otp-resend-btn:hover { color: #0e2532; }
+
+.otp-back-btn {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 1px solid #c7d8e8;
+  border-radius: 8px;
+  color: #4a7a94;
+  font-size: 13px;
+  padding: 10px;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background 0.15s;
+}
+
+.otp-back-btn:hover { background: #f0f8ff; }
+
+
 
 @media (max-width: 768px) {
   .login-content {

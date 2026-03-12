@@ -6,7 +6,7 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-// Add token to requests
+// Add token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -15,10 +15,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Auto-logout on 401 / 403 so stale/expired tokens don't silently show empty pages
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      // Clear session and redirect to login with a message
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Only redirect if not already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login?reason=session_expired';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Auth
 export const authAPI = {
-  login: (username, password) => api.post('/auth/login', { username, password }),
-  register: (data) => api.post('/auth/register', data),
+  login:    (username, password) => api.post('/auth/login',    { username, password }),
+  register: (data)               => api.post('/auth/register', data),
 };
 
 // Fisherfolk
@@ -28,6 +45,7 @@ export const fisherfolkAPI = {
   create: (data) => api.post('/fisherfolk', data),
   update: (id, data) => api.put(`/fisherfolk/${id}`, data),
   delete: (id) => api.delete(`/fisherfolk/${id}`),
+  renew: (id) => api.post(`/fisherfolk/${id}/renew`),
 };
 
 // Organization

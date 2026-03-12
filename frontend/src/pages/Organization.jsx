@@ -53,6 +53,7 @@ export default function Organization() {
   const [successMessage, setSuccessMessage] = useState('');
   const [search, setSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // Modal state
   const [modal, setModal] = useState(null); // null | 'org' | 'committee' | 'officer'
@@ -239,37 +240,52 @@ export default function Organization() {
   };
 
   // ── Delete ───────────────────────────────────────────────────────────────────
-  const handleDeleteOrg = async (id) => {
-    if (!window.confirm('Delete this organization?')) return;
-    try {
-      await organizationAPI.delete(id);
-      setOrganizations((prev) => prev.filter((o) => o._id !== id));
-      showSuccess('Organization deleted.');
-    } catch (err) {
-      setError('Failed to delete organization.');
-    }
+  const handleDeleteOrg = (id) => {
+    setConfirmDialog({
+      message: 'Delete this organization?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await organizationAPI.delete(id);
+          setOrganizations((prev) => prev.filter((o) => o._id !== id));
+          showSuccess('Organization deleted.');
+        } catch {
+          setError('Failed to delete organization.');
+        }
+      },
+    });
   };
 
-  const handleDeleteCommittee = async (id) => {
-    if (!window.confirm('Delete this committee?')) return;
-    try {
-      await committeesAPI.delete(id);
-      setCommittees((prev) => prev.filter((c) => c._id !== id));
-      showSuccess('Committee deleted.');
-    } catch (err) {
-      setError('Failed to delete committee.');
-    }
+  const handleDeleteCommittee = (id) => {
+    setConfirmDialog({
+      message: 'Delete this committee?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await committeesAPI.delete(id);
+          setCommittees((prev) => prev.filter((c) => c._id !== id));
+          showSuccess('Committee deleted.');
+        } catch {
+          setError('Failed to delete committee.');
+        }
+      },
+    });
   };
 
-  const handleDeleteOfficer = async (id) => {
-    if (!window.confirm('Delete this officer?')) return;
-    try {
-      await officersAPI.delete(id);
-      setOfficers((prev) => prev.filter((o) => o._id !== id));
-      showSuccess('Officer deleted.');
-    } catch (err) {
-      setError('Failed to delete officer.');
-    }
+  const handleDeleteOfficer = (id) => {
+    setConfirmDialog({
+      message: 'Delete this officer?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await officersAPI.delete(id);
+          setOfficers((prev) => prev.filter((o) => o._id !== id));
+          showSuccess('Officer deleted.');
+        } catch {
+          setError('Failed to delete officer.');
+        }
+      },
+    });
   };
 
   // ── Filtered data ────────────────────────────────────────────────────────────
@@ -662,12 +678,25 @@ export default function Organization() {
               <div className="form-row">
                 <div className="form-group">
                   <label>Position <span className="required">*</span></label>
-                  <input
+                  <select
                     required
                     value={officerForm.position}
                     onChange={(e) => setOfficerForm({ ...officerForm, position: e.target.value })}
-                    placeholder="e.g. Chairman"
-                  />
+                  >
+                    <option value="">-- Select Position --</option>
+                    <option value="President">President</option>
+                    <option value="Vice President">Vice President</option>
+                    <option value="Secretary">Secretary</option>
+                    <option value="Assistant Secretary">Assistant Secretary</option>
+                    <option value="Treasurer">Treasurer</option>
+                    <option value="Assistant Treasurer">Assistant Treasurer</option>
+                    <option value="Auditor">Auditor</option>
+                    <option value="PRO / Public Relations Officer">PRO / Public Relations Officer</option>
+                    <option value="Board Member">Board Member</option>
+                    <option value="Committee Chair">Committee Chair</option>
+                    <option value="Sergeant-at-Arms">Sergeant-at-Arms</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Appointment Date <span className="required">*</span></label>
@@ -708,6 +737,17 @@ export default function Organization() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {confirmDialog && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-message">{confirmDialog.message}</p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn-ok" onClick={confirmDialog.onConfirm}>OK</button>
+              <button className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmDialog(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

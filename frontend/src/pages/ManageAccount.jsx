@@ -25,6 +25,7 @@ export default function ManageAccount() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const defaultForm = {
     username: '',
@@ -153,16 +154,20 @@ export default function ManageAccount() {
     }
   };
 
-  const handleDeleteClick = async (id) => {
-    if (window.confirm('Are you sure you want to delete this user? This cannot be undone.')) {
-      try {
-        await usersAPI.delete(id);
-        setSuccessMessage('User deleted successfully');
-        fetchUsers();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to delete user');
-      }
-    }
+  const handleDeleteClick = (id) => {
+    setConfirmDialog({
+      message: 'Are you sure you want to delete this user? This cannot be undone.',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await usersAPI.delete(id);
+          setSuccessMessage('User deleted successfully');
+          fetchUsers();
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to delete user');
+        }
+      },
+    });
   };
 
   const handleCancel = () => {
@@ -227,6 +232,7 @@ export default function ManageAccount() {
                 <p>No users found</p>
               ) : (
                 <div className="table-section">
+                  <div className="table-section-scroll">
                   <table className="users-table">
                     <thead>
                       <tr>
@@ -284,6 +290,7 @@ export default function ManageAccount() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -424,6 +431,17 @@ export default function ManageAccount() {
           )}
         </div>
       </div>
+      {confirmDialog && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-message">{confirmDialog.message}</p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn-ok" onClick={confirmDialog.onConfirm}>OK</button>
+              <button className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmDialog(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

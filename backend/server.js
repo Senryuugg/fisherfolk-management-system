@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { isGCSEnabled } from './utils/gcs.js';
+import { startRenewalCron } from './utils/renewalCron.js';
 import authRoutes from './routes/auth.js';
 import fisherfolkRoutes from './routes/fisherfolk.js';
 import organizationRoutes from './routes/organization.js';
@@ -27,8 +28,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Trigger GCS initialization at startup so credentials are validated immediately
+// Trigger GCS initialization at startup
 isGCSEnabled();
+
+// Start renewal expiry cron
+startRenewalCron();
 
 // Middleware
 app.use(cors());

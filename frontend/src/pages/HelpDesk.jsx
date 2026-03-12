@@ -18,9 +18,9 @@ export default function HelpDesk() {
       icon: '🏢',
       content: `
         <h4>Bureau of Fisheries and Aquatic Resources</h4>
-        <p><strong>Address:</strong> Elliptical Road, Diliman, Quezon City 1101</p>
-        <p><strong>Hotline:</strong> (632) 920-5500</p>
-        <p><strong>Email:</strong> bfar@da.gov.ph</p>
+        <p><strong>Address:</strong> Fisheries Building Complex, BPI Compound, Visayas Ave, Quezon City, Philippines 1128</p>
+        <p><strong>Email:</strong> info@bfar.da.gov.ph</p>
+        <p><strong>Phone:</strong> +63 (2) 8539-5685</p>
         <p><strong>Working Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
         <p>For general inquiries about the FARMC database system and administrative matters.</p>
       `,
@@ -30,12 +30,12 @@ export default function HelpDesk() {
       title: 'REGIONAL OFFICE',
       icon: '🗺️',
       content: `
-        <h4>BFAR Regional Office - NCR</h4>
-        <p><strong>Address:</strong> Rama VI Avenue Extension, Port Area, Manila</p>
-        <p><strong>Hotline:</strong> (632) 527-3456</p>
-        <p><strong>Email:</strong> bfar.ncr@da.gov.ph</p>
+        <h4>BFAR – National Capital Region</h4>
+        <p><strong>Address:</strong> 08 Kalayaan Avenue, Brgy. Malaya, Diliman District, Quezon City, Metro Manila 1101 Philippines</p>
+        <p><strong>Email:</strong> records.ncr@bfar.da.gov.ph</p>
+        <p><strong>Regional Director:</strong> Noemi SB. Lanzuela, D.F. Tech &mdash; <a href="mailto:ord.ncr@bfar.da.gov.ph">ord.ncr@bfar.da.gov.ph</a></p>
         <p><strong>Working Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
-        <p>For regional support and assistance with local inquiries.</p>
+        <p>For regional support and assistance with local FARMC inquiries, licensing, and fisherfolk coordination.</p>
       `,
     },
   ];

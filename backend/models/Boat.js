@@ -15,8 +15,17 @@ const boatSchema = new mongoose.Schema(
     fisherfolkId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Fisherfolk',
-      required: true,
     },
+    // Store fisherfolk name as string when no ObjectId is available
+    fisherfolkName: String,
+    boatType: String,
+    engineType: String,
+    grossTonnage: String,
+    netTonnage: String,
+    homePort: String,
+    province: String,
+    cityMunicipality: String,
+    barangay: String,
     address: String,
     registrationDate: Date,
     status: {
@@ -24,11 +33,7 @@ const boatSchema = new mongoose.Schema(
       enum: ['active', 'inactive'],
       default: 'active',
     },
-    gears: [
-      {
-        type: String,
-      },
-    ],
+    gears: [{ type: String }],
   },
   { timestamps: true }
 );

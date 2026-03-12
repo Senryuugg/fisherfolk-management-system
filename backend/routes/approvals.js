@@ -18,11 +18,6 @@ router.get('/', authenticateToken, async (req, res) => {
     if (status) query.status = status;
     if (resource) query.resource = resource;
 
-    // LGU admin can only see submissions from their city
-    if (req.user.role === 'lgu_admin') {
-      query.submittedByCity = req.user.city;
-    }
-
     const skip = (Number(page) - 1) * Number(limit);
     const [approvals, total] = await Promise.all([
       Approval.find(query)
@@ -43,11 +38,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/approvals/count — Count pending approvals (for badge)
 router.get('/count', authenticateToken, async (req, res) => {
   try {
-    const query = { status: 'pending' };
-    if (req.user.role === 'lgu_admin') {
-      query.submittedByCity = req.user.city;
-    }
-    const count = await Approval.countDocuments(query);
+    const count = await Approval.countDocuments({ status: 'pending' });
     res.json({ count });
   } catch (error) {
     res.status(500).json({ message: 'Error counting approvals', error: error.message });

@@ -1,6 +1,4 @@
-'use client';
-
-import { createContext, useState, useEffect, useRef } from 'react';
+import { createContext, useState, useEffect, useRef, useCallback } from 'react';
 
 export const AuthContext = createContext();
 
@@ -9,30 +7,29 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const inactivityTimerRef = useRef(null);
+  // Always holds the latest logout fn so the timer callback never goes stale
+  const logoutRef = useRef(null);
 
-  // Auto-logout after 15 minutes of inactivity
-  const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
+  const INACTIVITY_TIMEOUT = 15 * 60 * 1000; // 15 minutes
 
-  const resetInactivityTimer = () => {
-    // Clear existing timer
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
+  const logout = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setToken(null);
+    setUser(null);
+  }, []);
 
-    // Set new timer only if user is logged in
-    if (token && user) {
-      inactivityTimerRef.current = setTimeout(() => {
-        console.log('[v0] Auto-logout triggered due to inactivity');
-        logout();
-      }, INACTIVITY_TIMEOUT);
-    }
-  };
+  // Keep logoutRef current so timers always call the latest version
+  useEffect(() => {
+    logoutRef.current = logout;
+  }, [logout]);
 
+  // Load user from localStorage on mount / token change
   useEffect(() => {
     if (token) {
       const storedUser = JSON.parse(localStorage.getItem('user'));
       if (storedUser) {
-        // Migrate all legacy roles to the new ABAC+PBAC role system
         const legacyRoleMap = {
           lgu:            'lgu_supervisor',
           viewer:         'bfar_viewer',
@@ -52,61 +49,34 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [token]);
 
-  // Setup activity listeners
+  // Setup inactivity auto-logout — runs whenever auth state changes
   useEffect(() => {
     if (!token || !user) return;
 
-    // Start inactivity timer
-    resetInactivityTimer();
-
-    // Activity events to monitor
-    const activityEvents = [
-      'mousedown',
-      'mousemove',
-      'keypress',
-      'scroll',
-      'touchstart',
-      'click',
-    ];
-
-    // Reset timer on any activity
-    const handleActivity = () => {
-      resetInactivityTimer();
+    const startTimer = () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = setTimeout(() => {
+        logoutRef.current?.();
+      }, INACTIVITY_TIMEOUT);
     };
 
-    // Add event listeners
-    activityEvents.forEach(event => {
-      document.addEventListener(event, handleActivity);
-    });
+    // Start the initial timer
+    startTimer();
 
-    // Cleanup
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(evt => document.addEventListener(evt, startTimer, { passive: true }));
+
     return () => {
-      if (inactivityTimerRef.current) {
-        clearTimeout(inactivityTimerRef.current);
-      }
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, handleActivity);
-      });
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      activityEvents.forEach(evt => document.removeEventListener(evt, startTimer));
     };
-  }, [token, user]);
+  }, [token, user]); // re-registers whenever login/logout happens
 
-  const login = (token, userData) => {
-    localStorage.setItem('token', token);
+  const login = (newToken, userData) => {
+    localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
-    setToken(token);
+    setToken(newToken);
     setUser(userData);
-  };
-
-  const logout = () => {
-    // Clear inactivity timer
-    if (inactivityTimerRef.current) {
-      clearTimeout(inactivityTimerRef.current);
-    }
-    
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
   };
 
   const updateUser = (updatedUserData) => {

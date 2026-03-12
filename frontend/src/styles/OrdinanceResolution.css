@@ -4,7 +4,6 @@
   flex-direction: column;
   gap: 0;
   padding: 24px;
-  height: 100%;
   box-sizing: border-box;
 }
 
@@ -209,8 +208,13 @@
 
 .or-btn--upload:hover { background: #dcfce7; }
 
-/* ── Table ──────────────────────────────────────────────────────────────────── */
-.or-table-wrap { overflow-x: auto; }
+/* ── Table wrap — horizontal + vertical scroll ───────────────────────────── */
+.or-table-wrap {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 390px);
+  min-height: 200px;
+}
 
 .or-table {
   width: 100%;
@@ -233,6 +237,11 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .or-th-check,
@@ -855,4 +864,75 @@
   .or-form-row { flex-direction: column; }
   .or-filters { gap: 8px; }
   .or-modal { padding: 20px; }
+
+/* ── Archive button ─────────────────────────────────────────────────────────── */
+.or-action-btn--archive {
+  background: #f0f4ff;
+  color: #3b5bdb;
+  border: 1px solid #adb5f5;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.or-action-btn--archive:hover { background: #e0e7ff; }
+
+/* ── Archives modal ─────────────────────────────────────────────────────────── */
+.or-modal--archive {
+  max-width: 820px;
+  width: 95%;
+}
+.or-archive-body {
+  padding: 0 4px;
+}
+.or-archive-meta {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+.or-archive-empty {
+  text-align: center;
+  color: #94a3b8;
+  padding: 24px 0;
+}
+.or-archive-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.or-archive-table th {
+  background: #f1f5f9;
+  color: #374151;
+  font-weight: 600;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #e2e8f0;
+}
+.or-archive-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.or-archive-current td {
+  background: #f0fdf4;
+}
+.or-version-current-badge {
+  display: inline-block;
+  margin-left: 6px;
+  background: #22c55e;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.or-archive-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 }

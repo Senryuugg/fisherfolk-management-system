@@ -103,10 +103,35 @@ export default function Dashboard() {
   const totalBoats = dashboardData.boats.total[0]?.count || 0;
   const totalGears = dashboardData.gears.total[0]?.count || 0;
   
-  // Province distribution for charts
+  // Province distribution for charts — map to district names and sort First→Fourth
+  const cleanProvince = (val) =>
+    (val || 'Unknown').replace(/\s*\(Not a Province\)\s*/gi, '').trim() || 'Unknown';
+
+  const DISTRICT_ORDER = ['First District', 'Second District', 'Third District', 'Fourth District'];
+
+  // Normalize raw province/district values to one of the four district labels
+  const normalizeDistrict = (raw) => {
+    const val = cleanProvince(raw).toLowerCase();
+    if (val.includes('first')  || val === '1st district') return 'First District';
+    if (val.includes('second') || val === '2nd district') return 'Second District';
+    if (val.includes('third')  || val === '3rd district') return 'Third District';
+    if (val.includes('fourth') || val === '4th district') return 'Fourth District';
+    return null; // skip unrecognised values
+  };
+
   const provinceData = dashboardData.fisherfolk.byProvince || [];
-  const topProvinces = provinceData.slice(0, 6);
-  
+
+  // Aggregate counts per district
+  const districtMap = { 'First District': 0, 'Second District': 0, 'Third District': 0, 'Fourth District': 0 };
+  provinceData.forEach((item) => {
+    const label = normalizeDistrict(item._id);
+    if (label) districtMap[label] += item.count;
+  });
+
+  // Build sorted arrays (First → Fourth)
+  const districtLabels = DISTRICT_ORDER;
+  const districtCounts = DISTRICT_ORDER.map((d) => districtMap[d]);
+
   // Livelihood distribution
   const livelihoodData = dashboardData.fisherfolk.byLivelihood || [];
   
@@ -130,13 +155,13 @@ export default function Dashboard() {
     ],
   };
 
-  // Fisherfolk by Province Data
+  // Fisherfolk by District Data (First → Fourth, ascending)
   const provinceChartData = {
-    labels: topProvinces.map(item => item._id || 'Unknown'),
+    labels: districtLabels,
     datasets: [
       {
         label: 'Fisherfolk Count',
-        data: topProvinces.map(item => item.count),
+        data: districtCounts,
         backgroundColor: '#4A9EFF',
         borderRadius: 6,
       },
@@ -301,7 +326,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="chart-container">
-              <h4>Fisherfolk by District</h4>
+              <h4>Fisherfolk by District (Top 4)</h4>
               <div className="chart-wrapper">
                 <Bar data={provinceChartData} options={chartOptions} />
               </div>
@@ -316,7 +341,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="chart-container">
-              <h4>Fishing Gear Types</h4>
+              <h4>Fishing Gear Types (Top 6)</h4>
               <div className="chart-wrapper">
                 <Bar data={gearTypesChartData} options={chartOptions} />
               </div>

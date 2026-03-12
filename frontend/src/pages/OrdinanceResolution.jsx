@@ -56,6 +56,7 @@ export default function OrdinanceResolution() {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('ordinance');
   const [activeTab, setActiveTab] = useState('ordinances');
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // Data
   const [documents, setDocuments] = useState([]);
@@ -103,6 +104,10 @@ export default function OrdinanceResolution() {
   const [showDetail, setShowDetail] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [restoringVersion, setRestoringVersion] = useState(null);
+
+  // Archives modal
+  const [archiveDoc, setArchiveDoc] = useState(null);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   // Share link
   const [shareUrl, setShareUrl] = useState('');
@@ -287,17 +292,22 @@ export default function OrdinanceResolution() {
   };
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this document and all its files?')) return;
-    try {
-      await ordinancesAPI.delete(id);
-      showMsg('Document deleted.');
-      setSelected((prev) => { const n = new Set(prev); n.delete(id); return n; });
-      if (detailDoc?._id === id) { setShowDetail(false); setDetailDoc(null); }
-      fetchDocs();
-    } catch {
-      showMsg('Failed to delete.', true);
-    }
+  const handleDelete = (id) => {
+    setConfirmDialog({
+      message: 'Delete this document and all its files?',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await ordinancesAPI.delete(id);
+          showMsg('Document deleted.');
+          setSelected((prev) => { const n = new Set(prev); n.delete(id); return n; });
+          if (detailDoc?._id === id) { setShowDetail(false); setDetailDoc(null); }
+          fetchDocs();
+        } catch {
+          showMsg('Failed to delete.', true);
+        }
+      },
+    });
   };
 
   // ── Detail panel ──────────────────────────────────────────────────────────
@@ -314,20 +324,25 @@ export default function OrdinanceResolution() {
     }
   };
 
-  const handleRestoreVersion = async (versionNumber) => {
+  const handleRestoreVersion = (versionNumber) => {
     if (!detailDoc) return;
-    if (!window.confirm(`Restore version ${versionNumber}? Current version will be archived.`)) return;
-    setRestoringVersion(versionNumber);
-    try {
-      const res = await ordinancesAPI.restoreVersion(detailDoc._id, versionNumber);
-      setDetailDoc(res.data);
-      showMsg(`Version ${versionNumber} restored.`);
-      fetchDocs();
-    } catch {
-      showMsg('Restore failed.', true);
-    } finally {
-      setRestoringVersion(null);
-    }
+    setConfirmDialog({
+      message: `Restore version ${versionNumber}? The current version will be archived.`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        setRestoringVersion(versionNumber);
+        try {
+          const res = await ordinancesAPI.restoreVersion(detailDoc._id, versionNumber);
+          setDetailDoc(res.data);
+          showMsg(`Version ${versionNumber} restored.`);
+          fetchDocs();
+        } catch {
+          showMsg('Restore failed.', true);
+        } finally {
+          setRestoringVersion(null);
+        }
+      },
+    });
   };
 
   // ── Share link ────────────────────────────────────────────────────────────
@@ -579,6 +594,15 @@ export default function OrdinanceResolution() {
                                     title="Share"
                                   >
                                     Share
+                                  </button>
+                                )}
+                                {(doc.versions || []).length > 0 && (
+                                  <button
+                                    className="or-action-btn or-action-btn--archive"
+                                    onClick={() => { setArchiveDoc(doc); setShowArchiveModal(true); }}
+                                    title="View version history"
+                                  >
+                                    Archives ({doc.versions.length})
                                   </button>
                                 )}
                                 {canDelete(user) && (
@@ -875,6 +899,95 @@ export default function OrdinanceResolution() {
               <button className="or-btn or-btn--primary" onClick={copyShareUrl}>
                 Copy
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Archives / Version History Modal ────────────────────────────────── */}
+      {showArchiveModal && archiveDoc && (
+        <div className="or-modal-overlay" onClick={() => { setShowArchiveModal(false); setArchiveDoc(null); }}>
+          <div className="or-modal or-modal--archive" onClick={(e) => e.stopPropagation()}>
+            <div className="or-modal-header">
+              <h2>Version History &mdash; {archiveDoc.title}</h2>
+              <button className="or-modal-close" onClick={() => { setShowArchiveModal(false); setArchiveDoc(null); }}>&times;</button>
+            </div>
+            <div className="or-archive-body">
+              <p className="or-archive-meta">
+                Document #{archiveDoc.documentNumber || '-'} &bull; Current version: v{archiveDoc.currentVersion || 1}
+              </p>
+              {archiveDoc.versions.length === 0 ? (
+                <p className="or-archive-empty">No previous versions found.</p>
+              ) : (
+                <table className="or-archive-table">
+                  <thead>
+                    <tr>
+                      <th>Version</th>
+                      <th>File Name</th>
+                      <th>Size</th>
+                      <th>Uploaded</th>
+                      <th>Note</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archiveDoc.versions.map((v) => (
+                      <tr key={v._id || v.versionNumber} className={v.versionNumber === archiveDoc.currentVersion ? 'or-archive-current' : ''}>
+                        <td>
+                          <span className="or-version-num">v{v.versionNumber}</span>
+                          {v.versionNumber === archiveDoc.currentVersion && (
+                            <span className="or-version-current-badge">Current</span>
+                          )}
+                        </td>
+                        <td>{v.originalName || '-'}</td>
+                        <td>{formatBytes(v.size)}</td>
+                        <td>{formatDate(v.uploadedAt)}</td>
+                        <td>{v.note || '-'}</td>
+                        <td>
+                          <div className="or-archive-actions">
+                            <a
+                              className="or-action-btn or-action-btn--download"
+                              href={ordinancesAPI.getVersionDownloadUrl(archiveDoc._id, v.versionNumber)}
+                              download
+                            >
+                              Download
+                            </a>
+                            {canCreate(user) && v.versionNumber !== archiveDoc.currentVersion && (
+                              <button
+                                className="or-action-btn or-action-btn--restore"
+                                onClick={async () => {
+                                  try {
+                                    await ordinancesAPI.restoreVersion(archiveDoc._id, v.versionNumber);
+                                    showMsg(`Restored to v${v.versionNumber}`);
+                                    setShowArchiveModal(false);
+                                    setArchiveDoc(null);
+                                    fetchDocs();
+                                  } catch {
+                                    showMsg('Failed to restore version.', true);
+                                  }
+                                }}
+                              >
+                                Restore
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmDialog && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-message">{confirmDialog.message}</p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn-ok" onClick={confirmDialog.onConfirm}>OK</button>
+              <button className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmDialog(null)}>Cancel</button>
             </div>
           </div>
         </div>

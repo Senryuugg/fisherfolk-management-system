@@ -1,5 +1,5 @@
 import express from 'express';
-import Fisherfolk from '../models/Fisherfolk.js';
+import Fisherfolk, { getRenewalYears } from '../models/Fisherfolk.js';
 import Approval from '../models/Approval.js';
 import { authenticateToken, canCreate, canUpdate, canDelete, canRead } from '../middleware/auth.js';
 import { createAuditLog } from './auditLogs.js';
@@ -22,11 +22,6 @@ router.get('/', authenticateToken, canRead, async (req, res) => {
         { lastName: { $regex: search, $options: 'i' } },
         { rsbsaNumber: { $regex: search, $options: 'i' } },
       ];
-    }
-
-    // LGU users can only see data for their city
-    if (req.user.role === 'lgu_admin' || req.user.role === 'lgu_user') {
-      if (req.user.city) query.cityMunicipality = req.user.city;
     }
 
     const fisherfolk = await Fisherfolk.find(query).populate('boats');
@@ -85,8 +80,8 @@ router.post('/', authenticateToken, canCreate, async (req, res) => {
       });
     }
 
-    // LGU users submit for approval
-    if (req.user.role === 'lgu_user') {
+    // LGU editor submissions go to approval queue
+    if (req.user.role === 'lgu_editor') {
       const approval = new Approval({
         submittedBy: req.user.id,
         submittedByUsername: req.user.username,
@@ -178,6 +173,40 @@ router.delete('/:id', authenticateToken, canDelete, async (req, res) => {
     res.json({ message: 'Fisherfolk deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting fisherfolk', error: error.message });
+  }
+});
+
+// Renew registration — sets renewalDate to today and recomputes registrationExpiry
+router.post('/:id/renew', authenticateToken, canUpdate, async (req, res) => {
+  try {
+    const fish = await Fisherfolk.findById(req.params.id);
+    if (!fish) return res.status(404).json({ message: 'Fisherfolk not found' });
+
+    fish.renewalDate = new Date();
+    fish.status = 'active'; // re-activate if they were inactive due to expiry
+
+    // registrationExpiry is recomputed automatically in the pre-save hook
+    await fish.save();
+
+    await createAuditLog({
+      userId: req.user.id,
+      username: req.user.username,
+      userRole: req.user.role,
+      action: 'update',
+      resource: 'fisherfolk',
+      resourceId: fish._id,
+      details: {
+        action: 'renewal',
+        renewalDate: fish.renewalDate,
+        newExpiry: fish.registrationExpiry,
+        renewalYears: getRenewalYears(fish.cityMunicipality),
+      },
+      req,
+    });
+
+    res.json({ message: 'Registration renewed successfully', fisherfolk: fish });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 

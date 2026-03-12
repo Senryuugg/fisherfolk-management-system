@@ -10,7 +10,7 @@ import '../styles/FisherfolkList.css';
 
 export default function FisherfolkList() {
   const { user, logout } = useContext(AuthContext);
-  const [currentPage, setCurrentPage] = useState('fisherfolk-list');
+  const [activePage, setActivePage] = useState('fisherfolk-list');
   const [fisherfolk, setFisherfolk] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,13 +19,13 @@ export default function FisherfolkList() {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm }
 
   const defaultForm = {
     rsbsaNumber: '',
     registrationNumber: '',
     firstName: '',
     lastName: '',
-    middleName: '',
     registrationDate: '',
     province: '',
     cityMunicipality: '',
@@ -41,9 +41,12 @@ export default function FisherfolkList() {
     search: '',
     lastName: '',
     firstName: '',
-    middleName: '',
+    district: '',
+    cityMunicipality: '',
+    barangay: '',
   });
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('active');
 
   useEffect(() => {
@@ -53,10 +56,8 @@ export default function FisherfolkList() {
   const fetchFisherfolk = async () => {
     setLoading(true);
     try {
-      const response = await fisherfolkAPI.getAll({
-        search: filters.search,
-      });
-      setFisherfolk(response.data || []);
+      const response = await fisherfolkAPI.getAll({ search: filters.search });
+      setFisherfolk(Array.isArray(response.data) ? response.data : []);
       setError('');
     } catch (err) {
       setError(`Failed to load fisherfolk data: ${err.response?.data?.message || err.message}`);
@@ -83,22 +84,24 @@ export default function FisherfolkList() {
       if (isEditing) {
         await fisherfolkAPI.update(editingId, formData);
         setSuccessMessage('Fisherfolk record updated successfully');
+        setShowAddModal(false);
+        setFormData(defaultForm);
+        setIsEditing(false);
+        setEditingId(null);
+        fetchFisherfolk();
       } else {
         const response = await fisherfolkAPI.create(formData);
-
         if (response.status === 202) {
-          // Pending approval
-          setSuccessMessage('Record submitted for approval. An administrator will review your submission.');
+          setSuccessMessage('Record submitted for approval. An LGU Supervisor will review your submission.');
         } else {
           setSuccessMessage('Fisherfolk record added successfully');
+          fetchFisherfolk();
         }
+        setShowAddModal(false);
+        setFormData(defaultForm);
+        setIsEditing(false);
+        setEditingId(null);
       }
-
-      setShowAddModal(false);
-      setFormData(defaultForm);
-      setIsEditing(false);
-      setEditingId(null);
-      fetchFisherfolk();
     } catch (err) {
       const data = err.response?.data;
       if (data?.duplicate) {
@@ -125,7 +128,6 @@ export default function FisherfolkList() {
       registrationNumber: fish.registrationNumber || '',
       firstName: fish.firstName || '',
       lastName: fish.lastName || '',
-      middleName: fish.middleName || '',
       registrationDate: fish.registrationDate ? fish.registrationDate.split('T')[0] : '',
       province: fish.province || '',
       cityMunicipality: fish.cityMunicipality || '',
@@ -140,15 +142,37 @@ export default function FisherfolkList() {
   };
 
   const handleDeleteClick = async (id) => {
-    if (window.confirm('Are you sure you want to delete this fisherfolk record? This cannot be undone.')) {
-      try {
-        await fisherfolkAPI.delete(id);
-        setSuccessMessage('Fisherfolk record deleted');
-        fetchFisherfolk();
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to delete record');
-      }
-    }
+    setConfirmDialog({
+      message: 'Are you sure you want to delete this fisherfolk record? This cannot be undone.',
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await fisherfolkAPI.delete(id);
+          setSuccessMessage('Fisherfolk record deleted');
+          fetchFisherfolk();
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to delete record');
+        }
+      },
+    });
+  };
+
+  const handleRenewClick = (fish) => {
+    const city = fish.cityMunicipality || '';
+    const years = /taguig/i.test(city) ? 2 : 1;
+    setConfirmDialog({
+      message: `Renew registration for ${fish.firstName} ${fish.lastName}? This will extend their registration by ${years} year(s) from today.`,
+      onConfirm: async () => {
+        setConfirmDialog(null);
+        try {
+          await fisherfolkAPI.renew(fish._id);
+          setSuccessMessage('Registration renewed successfully.');
+          fetchFisherfolk();
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to renew registration.');
+        }
+      },
+    });
   };
 
   const handleFilterChange = (e) => {
@@ -170,11 +194,14 @@ export default function FisherfolkList() {
     const statusMatch = activeTab === 'active' ? fishStatus === 'active' : fishStatus === 'inactive';
     const lastNameMatch = !filters.lastName || fish.lastName?.toLowerCase().includes(filters.lastName.toLowerCase());
     const firstNameMatch = !filters.firstName || fish.firstName?.toLowerCase().includes(filters.firstName.toLowerCase());
-    const middleNameMatch = !filters.middleName || (fish.middleName && fish.middleName.toLowerCase().includes(filters.middleName.toLowerCase()));
-    return statusMatch && lastNameMatch && firstNameMatch && middleNameMatch;
+    const districtMatch = !filters.district || (fish.province || '').toLowerCase().includes(filters.district.toLowerCase());
+    const cityMatch = !filters.cityMunicipality || (fish.cityMunicipality || '').toLowerCase().includes(filters.cityMunicipality.toLowerCase());
+    const barangayMatch = !filters.barangay || (fish.barangay || '').toLowerCase().includes(filters.barangay.toLowerCase());
+    return statusMatch && lastNameMatch && firstNameMatch && districtMatch && cityMatch && barangayMatch;
   });
 
-  const paginatedFisherfolk = filteredFisherfolk.slice(0, itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredFisherfolk.length / itemsPerPage));
+  const paginatedFisherfolk = filteredFisherfolk.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="dashboard-container">
@@ -226,7 +253,7 @@ export default function FisherfolkList() {
                   <span>items per page</span>
                 </div>
                 <div className="record-count">
-                  Showing {Math.min(itemsPerPage, filteredFisherfolk.length)} of {filteredFisherfolk.length} records
+                  Showing {paginatedFisherfolk.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, filteredFisherfolk.length)} of {filteredFisherfolk.length} records
                 </div>
               </div>
 
@@ -237,20 +264,29 @@ export default function FisherfolkList() {
                       <th>RSBSA NUMBER</th>
                       <th>REGISTRATION NUMBER</th>
                       <th>REGISTRATION DATE</th>
+                      <th>DATE OF RENEWAL</th>
                       <th>LASTNAME</th>
                       <th>FIRSTNAME</th>
-                      <th>MIDDLE NAME</th>
-                      <th>PROVINCE</th>
+                      <th>DISTRICT</th>
                       <th>CITY/MUNICIPALITY</th>
                       <th>BARANGAY</th>
                       {(canUpdate(user) || canDelete(user)) && <th>ACTIONS</th>}
                     </tr>
                     <tr className="filter-row">
-                      <td colSpan={3}></td>
+                      <td colSpan={4}></td>
                       <td><input type="text" placeholder="Filter last name" className="filter-input" value={filters.lastName} onChange={handleFilterChange} name="lastName" /></td>
                       <td><input type="text" placeholder="Filter first name" className="filter-input" value={filters.firstName} onChange={handleFilterChange} name="firstName" /></td>
-                      <td><input type="text" placeholder="Filter middle name" className="filter-input" value={filters.middleName} onChange={handleFilterChange} name="middleName" /></td>
-                      <td colSpan={3}></td>
+                      <td>
+                        <select className="filter-input" value={filters.district} onChange={handleFilterChange} name="district">
+                          <option value="">All Districts</option>
+                          <option value="First District">First District</option>
+                          <option value="Second District">Second District</option>
+                          <option value="Third District">Third District</option>
+                          <option value="Fourth District">Fourth District</option>
+                        </select>
+                      </td>
+                      <td><input type="text" placeholder="Filter city/municipality" className="filter-input" value={filters.cityMunicipality} onChange={handleFilterChange} name="cityMunicipality" /></td>
+                      <td><input type="text" placeholder="Filter barangay" className="filter-input" value={filters.barangay} onChange={handleFilterChange} name="barangay" /></td>
                       {(canUpdate(user) || canDelete(user)) && <td></td>}
                     </tr>
                   </thead>
@@ -265,10 +301,10 @@ export default function FisherfolkList() {
                           <td>{fish.rsbsaNumber}</td>
                           <td>{fish.registrationNumber || '-'}</td>
                           <td>{fish.registrationDate ? new Date(fish.registrationDate).toLocaleDateString() : '-'}</td>
+                          <td>{fish.renewalDate ? new Date(fish.renewalDate).toLocaleDateString() : '-'}</td>
                           <td>{fish.lastName}</td>
                           <td>{fish.firstName}</td>
-                          <td>{fish.middleName || '-'}</td>
-                          <td>{fish.province || '-'}</td>
+                          <td>{fish.province?.replace(/\(Not a Province\)/gi, '').trim() || '-'}</td>
                           <td>{fish.cityMunicipality || '-'}</td>
                           <td>{fish.barangay || '-'}</td>
                           {(canUpdate(user) || canDelete(user)) && (
@@ -276,6 +312,9 @@ export default function FisherfolkList() {
                               <div style={{ display: 'flex', gap: '6px' }}>
                                 {canUpdate(user) && (
                                   <button className="edit-btn-sm" onClick={() => handleEditClick(fish)}>Edit</button>
+                                )}
+                                {canUpdate(user) && (
+                                  <button className="renew-btn-sm" onClick={() => handleRenewClick(fish)}>Renew</button>
                                 )}
                                 {canDelete(user) && (
                                   <button className="delete-btn-sm" onClick={() => handleDeleteClick(fish._id)}>Delete</button>
@@ -355,27 +394,22 @@ export default function FisherfolkList() {
                         placeholder="Enter last name"
                       />
                     </div>
-                    <div className="form-group">
-                      <label>Middle Name</label>
-                      <input
-                        type="text"
-                        value={formData.middleName}
-                        onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
-                        placeholder="Enter middle name"
-                      />
-                    </div>
                   </div>
 
                   <div className="form-row">
                     <div className="form-group">
-                      <label>Province *</label>
-                      <input
-                        type="text"
+                      <label>District *</label>
+                      <select
                         required
                         value={formData.province}
                         onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-                        placeholder="e.g. NCR"
-                      />
+                      >
+                        <option value="">Select District</option>
+                        <option value="First District">First District</option>
+                        <option value="Second District">Second District</option>
+                        <option value="Third District">Third District</option>
+                        <option value="Fourth District">Fourth District</option>
+                      </select>
                     </div>
                     <div className="form-group">
                       <label>City/Municipality *</label>
@@ -465,6 +499,18 @@ export default function FisherfolkList() {
           )}
         </div>
       </div>
+      {/* Custom confirm dialog */}
+      {confirmDialog && (
+        <div className="confirm-overlay">
+          <div className="confirm-dialog">
+            <p className="confirm-message">{confirmDialog.message}</p>
+            <div className="confirm-actions">
+              <button className="confirm-btn confirm-btn-ok" onClick={confirmDialog.onConfirm}>OK</button>
+              <button className="confirm-btn confirm-btn-cancel" onClick={() => setConfirmDialog(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -93,21 +93,17 @@ router.post(
     try {
       const { username, password } = req.body;
 
-      // Find user
       const user = await User.findOne({ username });
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
-      // Check password
-      const isValidPassword = await user.comparePassword(password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      const isValid = await user.comparePassword(password);
+      if (!isValid) return res.status(401).json({ message: 'Invalid credentials' });
 
-      // Generate token
+      if (!user.active) return res.status(403).json({ message: 'Account is inactive. Contact administrator.' });
+
+      // Login — include city in token so backend approval routing works
       const token = jwt.sign(
-        { id: user._id, username: user.username, role: user.role },
+        { id: user._id, username: user.username, role: user.role, city: user.city },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
       );

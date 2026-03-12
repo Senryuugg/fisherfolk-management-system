@@ -20,8 +20,12 @@ const gearSchema = new mongoose.Schema(
     fisherfolkId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Fisherfolk',
-      required: true,
     },
+    // Store fisherfolk name as string when no ObjectId is available
+    fisherfolkName: String,
+    province: String,
+    cityMunicipality: String,
+    barangay: String,
     registrationDate: Date,
     status: {
       type: String,

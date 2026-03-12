@@ -1,146 +1,223 @@
+/* ── Page container ──────────────────────────────────────────────────────── */
 .report-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
+/* ── Filter panel ────────────────────────────────────────────────────────── */
+.report-filter-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.report-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.report-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.report-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.report-filter-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: #1a3a4a;
+  min-width: 160px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.report-filter-select--category {
+  min-width: 210px;
+  font-weight: 600;
+  color: #1a3a4a;
+  border-color: #4a9eff;
+  background: #f0f7ff;
+}
+
+.report-filter-select:focus {
+  outline: none;
+  border-color: #4a9eff;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.12);
+}
+
+.report-filter-divider {
+  width: 1px;
+  height: 36px;
+  background: #e2e8f0;
+  align-self: flex-end;
+  margin: 0 4px;
+}
+
+.report-reset-btn {
+  padding: 8px 16px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-end;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.report-reset-btn:hover {
+  background: #fecaca;
+}
+
+/* ── Results card ────────────────────────────────────────────────────────── */
 .report-table-section {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
   width: 100%;
   box-sizing: border-box;
+  /* overflow hidden creates block-formatting context so child height is respected */
+  overflow: hidden;
 }
 
-.report-tabs-header {
+/* ── Top bar: title + export buttons ─────────────────────────────────────── */
+.report-top-bar {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f9f9f9;
-  gap: 15px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+  /* must not grow — keeps table scroll area predictable */
+  flex-shrink: 0;
 }
 
-.report-tabs-header::-webkit-scrollbar {
-  height: 6px;
-}
-
-.report-tabs-header::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.report-tabs-header::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 3px;
-}
-
-.report-tabs-header::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-.report-tabs {
+.report-top-bar-left {
   display: flex;
-  gap: 5px;
-  border-bottom: none;
-  background: none;
-  border-radius: 0;
-  padding: 0;
-  flex-wrap: nowrap;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.report-tab {
-  padding: 12px 20px;
-  background: none;
-  border: none;
-  color: #666;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-
-.report-tab:hover {
+.report-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
   color: #1a3a4a;
 }
 
-.report-tab.active {
-  color: #4a9eff;
-  border-bottom-color: #4a9eff;
+.report-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.report-tab-content {
-  background: white;
-  padding: 24px 28px;
-  border-radius: 0 0 8px 8px;
+.filter-chip {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Scroll wrapper — THE scroll container ───────────────────────────────── */
+/*
+ * height (not max-height) is used so the element has a definitive size
+ * regardless of the parent chain having no fixed height.
+ * 370px accounts for: sidebar header 64px + page title 56px +
+ * filter panel ~130px + card top-bar ~80px + gap/padding ~40px
+ */
+.report-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  height: calc(100vh - 370px);
+  min-height: 220px;
+  padding: 0 24px 24px;
   box-sizing: border-box;
 }
 
-.filter-section {
-  display: flex;
-  gap: 15px;
-  align-items: flex-end;
-  margin-bottom: 20px;
+/* ── Data table ──────────────────────────────────────────────────────────── */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+.report-table thead {
+  background: #b3e5fc;
+  color: #1a3a4a;
+  font-weight: 700;
+}
+
+.report-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #b3e5fc;
+}
+
+.report-table th {
+  padding: 13px 16px;
+  text-align: left;
+  border-bottom: 2px solid #81d4fa;
+  white-space: nowrap;
+}
+
+.report-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.report-table tbody tr:hover {
   background: #f9f9f9;
-  padding: 20px;
-  border-radius: 6px;
 }
 
-.filter-inputs {
-  display: flex;
-  gap: 15px;
-  flex: 1;
+.report-table tfoot tr {
+  background: #f1f8ff;
 }
 
-.filter-inputs select {
-  flex: 1;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 13px;
-  font-family: inherit;
+.report-table tfoot td {
+  padding: 12px 16px;
+  font-weight: 700;
+  color: #1a3a4a;
+  border-top: 2px solid #81d4fa;
+  border-bottom: none;
 }
 
-.filter-inputs select:focus {
-  outline: none;
-  border-color: #4a9eff;
-}
-
-.search-btn,
-.reset-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
+/* ── Numeric cells — right-aligned, fixed width ──────────────────────────── */
+.num-cell {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
-  cursor: pointer;
-  transition: background 0.3s;
+  color: #1a3a4a;
+  width: 120px;
+  white-space: nowrap;
 }
 
-.search-btn {
-  background: #4a9eff;
-  color: white;
-}
-
-.search-btn:hover {
-  background: #2a7fd9;
-}
-
-.reset-btn {
-  background: #e74c3c;
-  color: white;
-}
-
-.reset-btn:hover {
-  background: #c0392b;
-}
-
-/* Export button group */
+/* ── Export buttons ──────────────────────────────────────────────────────── */
 .export-btns {
   display: flex;
   gap: 6px;
@@ -154,154 +231,67 @@
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
+  transition: background 0.2s;
   letter-spacing: 0.04em;
 }
 
-.export-csv {
-  background: #27ae60;
-  color: white;
-}
-.export-csv:hover { background: #229954; }
-
-.export-excel {
-  background: #217346;
-  color: white;
-}
+.export-csv   { background: #27ae60; color: white; }
+.export-csv:hover   { background: #229954; }
+.export-excel { background: #217346; color: white; }
 .export-excel:hover { background: #1a5e39; }
+.export-pdf   { background: #e74c3c; color: white; }
+.export-pdf:hover   { background: #c0392b; }
 
-.export-pdf {
-  background: #e74c3c;
-  color: white;
-}
-.export-pdf:hover { background: #c0392b; }
-
-.table-section {
-  overflow-x: auto;
-  width: 100%;
-}
-
-.report-table {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.report-table thead {
-  background: #b3e5fc;
-  color: #1a3a4a;
-  font-weight: 700;
-}
-
-.report-table th {
-  padding: 15px;
-  text-align: left;
-  border-bottom: 2px solid #81d4fa;
-  white-space: nowrap;
-}
-
-.report-table td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #eee;
-}
-
-.report-table tbody tr:hover {
-  background: #f9f9f9;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.status-badge.active {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-badge.pending {
-  background: #fff3cd;
-  color: #856404;
-}
-
-/* ─── Top bar: title + export buttons ────────────────────────────────────── */
-.report-top-bar {
+/* ── Summary cards ───────────────────────────────────────────────────────── */
+.report-summary-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
   gap: 12px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
-.report-top-bar h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: #1a3a4a;
-}
-
-/* ─── Loading / error / empty states ─────────────────────────────────────── */
-.loading-state {
-  padding: 60px 20px;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 14px;
+.summary-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 14px;
+  gap: 4px;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 20px;
+  min-width: 140px;
 }
 
-.loading-state .loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #4a9eff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-state {
-  padding: 60px 20px;
-  text-align: center;
-  color: #d1d5db;
-  font-size: 14px;
-}
-
-.error-banner {
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #92400e;
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 16px;
-}
-
-/* ─── Summary / totals row at the bottom of tables ───────────────────────── */
-.report-table tfoot tr {
-  background: #f1f8ff;
-}
-
-.report-table tfoot td {
-  padding: 12px 15px;
+.summary-value {
+  font-size: 24px;
   font-weight: 700;
   color: #1a3a4a;
-  border-top: 2px solid #81d4fa;
-  border-bottom: none;
 }
 
-/* ─── Percentage bar (optional visual inside table cells) ────────────────── */
+/* ── Sub-table title ─────────────────────────────────────────────────────── */
+.sub-table-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a3a4a;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #b3e5fc;
+}
+
+/* ── Committee tables ────────────────────────────────────────────────────── */
+.committee-tables {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Percentage bar ──────────────────────────────────────────────────────── */
 .pct-bar-wrap {
   display: flex;
   align-items: center;
@@ -331,59 +321,102 @@
   text-align: right;
 }
 
-/* ─── Number align ───────────────────────────────────────────────────────── */
-.num-cell {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+/* ── Status badges ───────────────────────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
   font-weight: 600;
-  color: #1a3a4a;
 }
 
-/* ─── Tab content padding ────────────────────────────────────────────────── */
-.report-tab-content {
-  padding: 24px 28px;
+.status-badge.active   { background: #d1fae5; color: #065f46; }
+.status-badge.inactive { background: #fee2e2; color: #991b1b; }
+.status-badge.pending  { background: #fff3cd; color: #856404; }
+
+/* ── Empty / loading / error ─────────────────────────────────────────────── */
+.empty-text {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
-@media (max-width: 640px) {
+.loading-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.loading-state .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #4a9eff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-banner {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #92400e;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+/* ── Tabs header ─────────────────────────────────────────────────────────── */
+.report-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f9f9f9;
+  gap: 15px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .report-table-wrapper {
+    height: calc(100vh - 420px);
+  }
+}
+
+@media (max-width: 768px) {
+  .report-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-filter-select,
+  .report-filter-select--category {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .report-filter-divider { display: none; }
+
   .report-top-bar {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .export-btns {
-    flex-wrap: wrap;
-  }
-}
+  .export-btns { flex-wrap: wrap; }
 
-@media (max-width: 768px) {
-  .report-section {
-    padding: 15px;
-  }
-
-  .filter-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-inputs {
-    flex-direction: column;
-  }
-
-  .filter-inputs select {
-    width: 100%;
-  }
-
-  .search-btn,
-  .reset-btn {
-    width: 100%;
-  }
-
-  .report-table {
-    font-size: 12px;
-  }
-
-  .report-table th,
-  .report-table td {
-    padding: 10px 8px;
-  }
+  .num-cell { width: 80px; }
 }
