@@ -6,7 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import {
-  canCreateUsers, canDelete, canUpdate, isTopAdmin,
+  canCreateUsers, isTopAdmin,
   ROLES, getRoleDisplayName, getRoleBadgeColor, getCreatableRoles,
   isLguSupervisor, isBfarSupervisor,
 } from '../utils/permissions';
@@ -17,15 +17,26 @@ export default function ManageAccount() {
   const { user, logout, updateUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState('manage-account');
+
+  // Determine if this user can manage other users or only their own profile
+  const isManager = user && (
+    user.role === ROLES.ADMIN ||
+    user.role === ROLES.BFAR_SUPERVISOR ||
+    user.role === ROLES.LGU_SUPERVISOR
+  );
+
+  // ── Manager state (user table) ─────────────────────────────────────────────
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmDialog, setConfirmDialog] = useState(null);
+
+  // ── Shared state ───────────────────────────────────────────────────────────
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const defaultForm = {
     username: '',
@@ -38,31 +49,44 @@ export default function ManageAccount() {
     region: '',
     active: true,
   };
-
   const [formData, setFormData] = useState(defaultForm);
+
+  // ── Profile-only state (non-managers) ─────────────────────────────────────
+  const [profileForm, setProfileForm] = useState({
+    username: user?.username || '',
+    email: user?.email || '',
+    fullName: user?.fullName || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  useEffect(() => { fetchUsers(); }, []);
+  // ── Manager: fetch all users ───────────────────────────────────────────────
+  useEffect(() => {
+    if (isManager) fetchUsers();
+  }, [isManager]);
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      setLoadingUsers(true);
       const response = await usersAPI.getAll();
       setUsers(response.data || []);
     } catch (err) {
       setError('Failed to fetch users. ' + (err.response?.data?.message || err.message));
     } finally {
-      setLoading(false);
+      setLoadingUsers(false);
     }
   };
 
+  // ── Manager: form handlers ─────────────────────────────────────────────────
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  // Auto-set department based on role
   const handleRoleChange = (e) => {
     const role = e.target.value;
     let dept = formData.department;
@@ -90,7 +114,7 @@ export default function ManageAccount() {
       email: userData.email || '',
       password: '',
       fullName: userData.fullName || '',
-      role: userData.role || 'lgu_user',
+      role: userData.role || 'lgu_editor',
       department: userData.department || 'lgu',
       city: userData.city || '',
       region: userData.region || '',
@@ -105,7 +129,6 @@ export default function ManageAccount() {
     setError('');
     setSuccessMessage('');
 
-    // Validate required fields
     if (!formData.username || !formData.email || !formData.fullName) {
       setError('Username, Email, and Full Name are required');
       return;
@@ -128,29 +151,20 @@ export default function ManageAccount() {
           active: formData.active,
         };
         if (formData.password) body.password = formData.password;
-
-        const response = await usersAPI.update(editingId, body);
-
-        // Update AuthContext if editing self
+        await usersAPI.update(editingId, body);
         if (user && (editingId === user._id || editingId === user.id)) {
           updateUser({ username: body.username, email: body.email, fullName: body.fullName, role: body.role });
         }
-
         setSuccessMessage('User updated successfully');
       } else {
         await usersAPI.create(formData);
         setSuccessMessage('User created successfully');
       }
-
       setShowForm(false);
       fetchUsers();
     } catch (err) {
       const msg = err.response?.data?.message || err.message;
-      if (err.response?.data?.duplicate) {
-        setError(`Duplicate: ${msg}`);
-      } else {
-        setError(msg);
-      }
+      setError(err.response?.data?.duplicate ? `Duplicate: ${msg}` : msg);
     }
   };
 
@@ -177,7 +191,6 @@ export default function ManageAccount() {
     setEditingId(null);
   };
 
-  // Determine which users this user can edit/delete
   const canEditUser = (targetUser) => {
     if (isTopAdmin(user)) return true;
     if (isLguSupervisor(user) && [ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(targetUser.role)) return true;
@@ -188,6 +201,51 @@ export default function ManageAccount() {
   const canDeleteUser = (targetUser) => {
     if (!isTopAdmin(user)) return false;
     return user?._id !== targetUser._id && user?.id !== targetUser._id;
+  };
+
+  // ── Profile-only: self-edit handler ───────────────────────────────────────
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+
+    if (!profileForm.username || !profileForm.email || !profileForm.fullName) {
+      setError('Username, Email, and Full Name are required');
+      return;
+    }
+    if (profileForm.newPassword && profileForm.newPassword !== profileForm.confirmPassword) {
+      setError('New passwords do not match');
+      return;
+    }
+    if (profileForm.newPassword && profileForm.newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setProfileLoading(true);
+      const userId = user?._id || user?.id;
+      const body = {
+        username: profileForm.username,
+        email: profileForm.email,
+        fullName: profileForm.fullName,
+      };
+      if (profileForm.newPassword) body.password = profileForm.newPassword;
+
+      await usersAPI.update(userId, body);
+      updateUser({ username: body.username, email: body.email, fullName: body.fullName });
+      setSuccessMessage('Profile updated successfully');
+      setProfileForm(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to update profile');
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   const creatableRoles = getCreatableRoles(user);
@@ -204,10 +262,102 @@ export default function ManageAccount() {
       <div className="main-content">
         <Header title="MANAGE ACCOUNT" user={user} />
         <div className="manage-account-content">
-          {error && <div className="error-message">{error}</div>}
-          {successMessage && <div className="success-message">{successMessage}</div>}
+          {error && <div className="error-message" onClick={() => setError('')}>{error}</div>}
+          {successMessage && <div className="success-message" onClick={() => setSuccessMessage('')}>{successMessage}</div>}
 
-          {!showForm && (
+          {/* ── NON-MANAGER: My Profile form ────────────────────────────── */}
+          {!isManager && (
+            <div className="profile-section">
+              <div className="profile-header">
+                <div className="profile-avatar">
+                  {(user?.fullName || user?.username || '?')[0].toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="profile-name">{user?.fullName || user?.username}</h2>
+                  <span
+                    className="role-badge"
+                    style={(() => { const s = getRoleBadgeColor(user?.role); return { background: s.bg, color: s.text }; })()}
+                  >
+                    {getRoleDisplayName(user?.role)}
+                  </span>
+                </div>
+              </div>
+
+              <form onSubmit={handleProfileSubmit} className="profile-form">
+                <h3 className="profile-section-title">Account Information</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Username *</label>
+                    <input
+                      type="text"
+                      name="username"
+                      value={profileForm.username}
+                      onChange={handleProfileChange}
+                      placeholder="Enter username"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Email *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={profileForm.email}
+                      onChange={handleProfileChange}
+                      placeholder="Enter email"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Full Name *</label>
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={profileForm.fullName}
+                      onChange={handleProfileChange}
+                      placeholder="Enter full name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <h3 className="profile-section-title" style={{ marginTop: '24px' }}>Change Password</h3>
+                <p className="help-text" style={{ marginBottom: '12px' }}>Leave blank to keep your current password.</p>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>New Password</label>
+                    <input
+                      type="password"
+                      name="newPassword"
+                      value={profileForm.newPassword}
+                      onChange={handleProfileChange}
+                      placeholder="Enter new password (min 6 chars)"
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Confirm New Password</label>
+                    <input
+                      type="password"
+                      name="confirmPassword"
+                      value={profileForm.confirmPassword}
+                      onChange={handleProfileChange}
+                      placeholder="Repeat new password"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-buttons" style={{ marginTop: '20px' }}>
+                  <button type="submit" className="submit-btn" disabled={profileLoading}>
+                    {profileLoading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ── MANAGER: User management table ──────────────────────────── */}
+          {isManager && !showForm && (
             <div>
               <div className="manage-header">
                 <h2>User Management</h2>
@@ -216,7 +366,6 @@ export default function ManageAccount() {
                 )}
               </div>
 
-              {/* Search */}
               <div className="user-search-bar">
                 <input
                   type="text"
@@ -226,105 +375,81 @@ export default function ManageAccount() {
                 />
               </div>
 
-              {loading ? (
+              {loadingUsers ? (
                 <p>Loading users...</p>
               ) : filteredUsers.length === 0 ? (
                 <p>No users found</p>
               ) : (
                 <div className="table-section">
                   <div className="table-section-scroll">
-                  <table className="users-table">
-                    <thead>
-                      <tr>
-                        <th>Username</th>
-                        <th>Full Name</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Department</th>
-                        <th>City</th>
-                        <th>Region</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map((userData) => {
-                        const badgeStyle = getRoleBadgeColor(userData.role);
-                        return (
-                          <tr key={userData._id}>
-                            <td>{userData.username}</td>
-                            <td>{userData.fullName}</td>
-                            <td>{userData.email}</td>
-                            <td>
-                              <span
-                                className="role-badge"
-                                style={{ background: badgeStyle.bg, color: badgeStyle.text }}
-                              >
-                                {getRoleDisplayName(userData.role)}
-                              </span>
-                            </td>
-                            <td>{userData.department || '-'}</td>
-                            <td>{userData.city || '-'}</td>
-                            <td>{userData.region || '-'}</td>
-                            <td>
-                              <span className={`status-badge ${userData.active !== false ? 'active' : 'inactive'}`}>
-                                {userData.active !== false ? 'Active' : 'Inactive'}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="action-buttons">
-                                {canEditUser(userData) && (
-                                  <button className="edit-btn" onClick={() => handleEditClick(userData)}>
-                                    Edit
-                                  </button>
-                                )}
-                                {canDeleteUser(userData) && (
-                                  <button className="delete-btn" onClick={() => handleDeleteClick(userData._id)}>
-                                    Delete
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                    <table className="users-table">
+                      <thead>
+                        <tr>
+                          <th>Username</th>
+                          <th>Full Name</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Department</th>
+                          <th>City</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredUsers.map((userData) => {
+                          const badgeStyle = getRoleBadgeColor(userData.role);
+                          return (
+                            <tr key={userData._id}>
+                              <td>{userData.username}</td>
+                              <td>{userData.fullName}</td>
+                              <td>{userData.email}</td>
+                              <td>
+                                <span className="role-badge" style={{ background: badgeStyle.bg, color: badgeStyle.text }}>
+                                  {getRoleDisplayName(userData.role)}
+                                </span>
+                              </td>
+                              <td>{userData.department || '-'}</td>
+                              <td>{userData.city || '-'}</td>
+                              <td>
+                                <span className={`status-badge ${userData.active !== false ? 'active' : 'inactive'}`}>
+                                  {userData.active !== false ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="action-buttons">
+                                  {canEditUser(userData) && (
+                                    <button className="edit-btn" onClick={() => handleEditClick(userData)}>Edit</button>
+                                  )}
+                                  {canDeleteUser(userData) && (
+                                    <button className="delete-btn" onClick={() => handleDeleteClick(userData._id)}>Delete</button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {showForm && (
+          {/* ── MANAGER: Add/Edit user form ──────────────────────────────── */}
+          {isManager && showForm && (
             <div className="form-section">
               <h2>{isEditing ? 'Edit User' : 'Add New User'}</h2>
               <form onSubmit={handleSubmit} className="user-form">
                 <div className="form-grid">
                   <div className="form-group">
                     <label>Username *</label>
-                    <input
-                      type="text"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleFormChange}
-                      placeholder="Enter username"
-                      required
-                    />
+                    <input type="text" name="username" value={formData.username} onChange={handleFormChange} placeholder="Enter username" required />
                   </div>
-
                   <div className="form-group">
                     <label>Email *</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleFormChange}
-                      placeholder="Enter email"
-                      required
-                    />
+                    <input type="email" name="email" value={formData.email} onChange={handleFormChange} placeholder="Enter email" required />
                   </div>
-
                   <div className="form-group">
                     <label>Password {isEditing ? '(leave blank to keep)' : '*'}</label>
                     <input
@@ -332,22 +457,14 @@ export default function ManageAccount() {
                       name="password"
                       value={formData.password}
                       onChange={handleFormChange}
-                      placeholder={isEditing ? 'Leave blank to keep current' : 'Enter password (min 6 chars)'}
+                      placeholder={isEditing ? 'Leave blank to keep current' : 'Enter password'}
                       required={!isEditing}
                       minLength={6}
                     />
                   </div>
-
                   <div className="form-group">
                     <label>Full Name *</label>
-                    <input
-                      type="text"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleFormChange}
-                      placeholder="Enter full name"
-                      required
-                    />
+                    <input type="text" name="fullName" value={formData.fullName} onChange={handleFormChange} placeholder="Enter full name" required />
                   </div>
 
                   {creatableRoles.length > 0 && (
@@ -358,13 +475,6 @@ export default function ManageAccount() {
                           <option key={role} value={role}>{getRoleDisplayName(role)}</option>
                         ))}
                       </select>
-                      <small className="help-text">
-                        {formData.role === ROLES.LGU_EDITOR      && 'LGU Editors submit data that goes to approval queue'}
-                        {formData.role === ROLES.LGU_SUPERVISOR   && 'LGU Supervisors approve submissions and manage their city data'}
-                        {formData.role === ROLES.BFAR_VIEWER      && 'BFAR Viewers have read-only access to all data'}
-                        {formData.role === ROLES.BFAR_SUPERVISOR  && 'BFAR Supervisors have full data access, manage users, and approve submissions'}
-                        {formData.role === ROLES.ADMIN            && 'Admin has complete system access'}
-                      </small>
                     </div>
                   )}
 
@@ -380,38 +490,19 @@ export default function ManageAccount() {
                   {[ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(formData.role) && (
                     <div className="form-group">
                       <label>City / Municipality *</label>
-                      <input
-                        type="text"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleFormChange}
-                        placeholder="e.g. Navotas, Malabon"
-                        required
-                      />
-                      <small className="help-text">LGU users can only see data for their assigned city</small>
+                      <input type="text" name="city" value={formData.city} onChange={handleFormChange} placeholder="e.g. Navotas, Malabon" required />
                     </div>
                   )}
 
                   <div className="form-group">
                     <label>Region</label>
-                    <input
-                      type="text"
-                      name="region"
-                      value={formData.region}
-                      onChange={handleFormChange}
-                      placeholder="e.g. NCR, Region 1"
-                    />
+                    <input type="text" name="region" value={formData.region} onChange={handleFormChange} placeholder="e.g. NCR" />
                   </div>
 
                   {(isTopAdmin(user) || isLguSupervisor(user) || isBfarSupervisor(user)) && (
                     <div className="form-group checkbox">
                       <label>
-                        <input
-                          type="checkbox"
-                          name="active"
-                          checked={formData.active}
-                          onChange={handleFormChange}
-                        />
+                        <input type="checkbox" name="active" checked={formData.active} onChange={handleFormChange} />
                         <span>Active Account</span>
                       </label>
                     </div>
@@ -419,18 +510,15 @@ export default function ManageAccount() {
                 </div>
 
                 <div className="form-buttons">
-                  <button type="submit" className="submit-btn">
-                    {isEditing ? 'Update User' : 'Create User'}
-                  </button>
-                  <button type="button" className="cancel-btn" onClick={handleCancel}>
-                    Cancel
-                  </button>
+                  <button type="submit" className="submit-btn">{isEditing ? 'Update User' : 'Create User'}</button>
+                  <button type="button" className="cancel-btn" onClick={handleCancel}>Cancel</button>
                 </div>
               </form>
             </div>
           )}
         </div>
       </div>
+
       {confirmDialog && (
         <div className="confirm-overlay">
           <div className="confirm-dialog">

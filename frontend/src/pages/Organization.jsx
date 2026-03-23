@@ -13,7 +13,6 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const defaultOrg = {
   name: '',
-  category: 'Association',
   registrationDate: today(),
   address: '',
   contactPerson: '',
@@ -110,7 +109,6 @@ export default function Organization() {
     setEditingId(org._id);
     setOrgForm({
       name: org.name,
-      category: org.category,
       registrationDate: org.registrationDate?.slice(0, 10) || today(),
       address: org.address || '',
       contactPerson: org.contactPerson || '',
@@ -169,7 +167,6 @@ export default function Organization() {
   const handleOrgSubmit = async (e) => {
     e.preventDefault();
     if (!orgForm.name.trim()) { setFormError('Organization name is required.'); return; }
-    if (!orgForm.category) { setFormError('Category is required.'); return; }
     if (!orgForm.registrationDate) { setFormError('Registration date is required.'); return; }
     setSubmitting(true);
     try {
@@ -302,6 +299,11 @@ export default function Organization() {
 
   const orgNames = organizations.map((o) => o.name);
 
+  // Inline role checks — same pattern as FisherfolkList
+  const userCanUpdate = user && ['admin','bfar_supervisor','lgu_supervisor','lgu_editor','lgu','lgu_admin','lgu_user','officer'].includes(user.role);
+  const userCanDelete = user && ['admin','bfar_supervisor'].includes(user.role);
+  const userCanCreate = user && ['admin','bfar_supervisor','lgu_supervisor','lgu_editor','lgu','lgu_admin','lgu_user','officer'].includes(user.role);
+
   // ── Tab header config — each tab has its own add handler ─────────────────────
   const tabConfig = {
     organizations: { label: 'Add Organization', onAdd: openAddOrg },
@@ -337,7 +339,7 @@ export default function Organization() {
                 ))}
               </div>
 
-              {canCreate(user) && (
+              {userCanCreate && (
                 <button className="add-org-btn" onClick={tabConfig[activeTab].onAdd}>
                   + {tabConfig[activeTab].label}
                 </button>
@@ -372,32 +374,28 @@ export default function Organization() {
                         <thead>
                           <tr>
                             <th>Organization Name</th>
-                            <th>Category</th>
                             <th>Registration Date</th>
                             <th>Contact Person</th>
                             <th>Members</th>
                             <th>Status</th>
-                            {(canUpdate(user) || canDelete(user)) && <th>Actions</th>}
+                            {userCanUpdate && <th>Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {filteredOrgs.length === 0 ? (
-                            <tr><td colSpan="7" className="empty-text">No organizations found.</td></tr>
+                            <tr><td colSpan="6" className="empty-text">No organizations found.</td></tr>
                           ) : (
                             filteredOrgs.map((org) => (
                               <tr key={org._id}>
                                 <td>{org.name}</td>
-                                <td>{org.category}</td>
                                 <td>{org.registrationDate?.slice(0, 10)}</td>
                                 <td>{org.contactPerson || '-'}</td>
                                 <td>{org.members?.length ?? org.memberCount ?? '-'}</td>
                                 <td><span className={`status-badge ${org.status}`}>{org.status}</span></td>
-                                {(canUpdate(user) || canDelete(user)) && (
+                                {userCanUpdate && (
                                   <td className="actions-cell">
-                                    {canUpdate(user) && (
-                                      <button className="edit-btn" onClick={() => openEditOrg(org)}>Edit</button>
-                                    )}
-                                    {canDelete(user) && (
+                                    <button className="edit-btn" onClick={() => openEditOrg(org)}>Edit</button>
+                                    {userCanDelete && (
                                       <button className="delete-btn" onClick={() => handleDeleteOrg(org._id)}>Delete</button>
                                     )}
                                   </td>
@@ -421,7 +419,7 @@ export default function Organization() {
                             <th>Organization</th>
                             <th>Members</th>
                             <th>Date Formed</th>
-                            {(canUpdate(user) || canDelete(user)) && <th>Actions</th>}
+                            {userCanUpdate && <th>Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -435,12 +433,10 @@ export default function Organization() {
                                 <td>{c.organization}</td>
                                 <td>{c.members}</td>
                                 <td>{c.dateFormed?.slice(0, 10)}</td>
-                                {(canUpdate(user) || canDelete(user)) && (
+                                {userCanUpdate && (
                                   <td className="actions-cell">
-                                    {canUpdate(user) && (
-                                      <button className="edit-btn" onClick={() => openEditCommittee(c)}>Edit</button>
-                                    )}
-                                    {canDelete(user) && (
+                                    <button className="edit-btn" onClick={() => openEditCommittee(c)}>Edit</button>
+                                    {userCanDelete && (
                                       <button className="delete-btn" onClick={() => handleDeleteCommittee(c._id)}>Delete</button>
                                     )}
                                   </td>
@@ -463,7 +459,7 @@ export default function Organization() {
                             <th>Position</th>
                             <th>Organization</th>
                             <th>Appointment Date</th>
-                            {(canUpdate(user) || canDelete(user)) && <th>Actions</th>}
+                            {userCanUpdate && <th>Actions</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -476,12 +472,10 @@ export default function Organization() {
                                 <td>{o.position}</td>
                                 <td>{o.organization}</td>
                                 <td>{o.appointmentDate?.slice(0, 10)}</td>
-                                {(canUpdate(user) || canDelete(user)) && (
+                                {userCanUpdate && (
                                   <td className="actions-cell">
-                                    {canUpdate(user) && (
-                                      <button className="edit-btn" onClick={() => openEditOfficer(o)}>Edit</button>
-                                    )}
-                                    {canDelete(user) && (
+                                    <button className="edit-btn" onClick={() => openEditOfficer(o)}>Edit</button>
+                                    {userCanDelete && (
                                       <button className="delete-btn" onClick={() => handleDeleteOfficer(o._id)}>Delete</button>
                                     )}
                                   </td>
@@ -517,20 +511,6 @@ export default function Organization() {
                 />
               </div>
               <div className="form-row">
-                <div className="form-group">
-                  <label>Category <span className="required">*</span></label>
-                  <select
-                    required
-                    value={orgForm.category}
-                    onChange={(e) => setOrgForm({ ...orgForm, category: e.target.value })}
-                  >
-                    <option value="Association">Association</option>
-                    <option value="Cooperative">Cooperative</option>
-                    <option value="Union">Union</option>
-                    <option value="Federation">Federation</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
                 <div className="form-group">
                   <label>Status</label>
                   <select

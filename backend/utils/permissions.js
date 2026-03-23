@@ -1,173 +1,176 @@
-// Advanced RBAC permissions matrix
-// Defines what each role can do with each resource
+/**
+ * ABAC + PBAC Hybrid — FARMC System
+ *
+ * ABAC (Attribute-Based):  checks user.role, user.department, user.city against the resource
+ * PBAC (Policy-Based):     each policy function encapsulates what a role CAN do on a resource
+ *
+ * ROLES:
+ *   admin          — super admin, full access to everything
+ *   bfar_supervisor— BFAR dept: full CRUD, manage all users, approve/reject, view audit log
+ *   bfar_viewer    — BFAR dept: read-only; cannot write, manage users, or see audit log
+ *   lgu_supervisor — LGU dept:  CRUD within their city, manage LGU users, approve LGU editors
+ *   lgu_editor     — LGU dept:  create/edit within their city (submissions go to approval queue)
+ */
 
-export const permissions = {
-  admin: {
-    fisherfolk: { view: true, create: true, edit: true, delete: true, export: true, import: true },
-    boats: { view: true, create: true, edit: true, delete: true, export: true, import: true },
-    gears: { view: true, create: true, edit: true, delete: true, export: true, import: true },
-    organizations: { view: true, create: true, edit: true, delete: true, export: true, import: true },
-    committees: { view: true, create: true, edit: true, delete: true, export: true },
-    officers: { view: true, create: true, edit: true, delete: true, export: true },
-    ordinances: { view: true, create: true, edit: true, delete: true, export: true },
-    faqs: { view: true, create: true, edit: true, delete: true },
-    tickets: { view: true, create: true, edit: true, delete: true },
-    developmentLevels: { view: true, create: true, edit: true, delete: true },
-    maps: { view: true, create: true, edit: true, delete: true },
-    reports: { view: true, generate: true, export: true },
-    auditLogs: { view: true },
-    users: { view: true, create: true, edit: true, delete: true },
-    permissions: { view: true, edit: true },
-  },
-  lgu: {
-    fisherfolk: { view: true, create: true, edit: true, delete: false, export: true, import: true },
-    boats: { view: true, create: true, edit: true, delete: false, export: true, import: true },
-    gears: { view: true, create: true, edit: true, delete: false, export: true, import: true },
-    organizations: { view: true, create: true, edit: true, delete: false, export: true },
-    committees: { view: true, create: true, edit: true, delete: false, export: true },
-    officers: { view: true, create: true, edit: true, delete: false, export: true },
-    ordinances: { view: true, create: false, edit: false, delete: false, export: true },
-    faqs: { view: true, create: false, edit: false, delete: false },
-    tickets: { view: true, create: true, edit: true, delete: false },
-    developmentLevels: { view: true, create: false, edit: false, delete: false },
-    maps: { view: true, create: true, edit: true, delete: false },
-    reports: { view: true, generate: true, export: true },
-    auditLogs: { view: false },
-    users: { view: false, create: false, edit: false, delete: false },
-    permissions: { view: false, edit: false },
-  },
-  viewer: {
-    fisherfolk: { view: true, create: false, edit: false, delete: false, export: true, import: false },
-    boats: { view: true, create: false, edit: false, delete: false, export: true, import: false },
-    gears: { view: true, create: false, edit: false, delete: false, export: true, import: false },
-    organizations: { view: true, create: false, edit: false, delete: false, export: true },
-    committees: { view: true, create: false, edit: false, delete: false, export: false },
-    officers: { view: true, create: false, edit: false, delete: false, export: false },
-    ordinances: { view: true, create: false, edit: false, delete: false, export: false },
-    faqs: { view: true, create: false, edit: false, delete: false },
-    tickets: { view: true, create: true, edit: false, delete: false },
-    developmentLevels: { view: true, create: false, edit: false, delete: false },
-    maps: { view: true, create: false, edit: false, delete: false },
-    reports: { view: true, generate: false, export: false },
-    auditLogs: { view: false },
-    users: { view: false, create: false, edit: false, delete: false },
-    permissions: { view: false, edit: false },
-  },
+// ─── Role constants ────────────────────────────────────────────────────────────
+export const ROLES = {
+  ADMIN:           'admin',
+  BFAR_SUPERVISOR: 'bfar_supervisor',
+  BFAR_VIEWER:     'bfar_viewer',
+  LGU_SUPERVISOR:  'lgu_supervisor',
+  LGU_EDITOR:      'lgu_editor',
 };
 
-// Field-level access control - which fields each role can see/edit
-export const fieldAccess = {
-  admin: {
-    fisherfolk: { view: ['*'], edit: ['*'] }, // Can see and edit all fields
-  },
-  lgu: {
-    fisherfolk: {
-      view: ['*'],
-      edit: ['firstName', 'lastName', 'age', 'phone', 'email', 'province', 'estimatedIncome'],
-      hidden: [], // No hidden fields
-    },
-  },
-  viewer: {
-    fisherfolk: {
-      view: ['firstName', 'lastName', 'age', 'province', 'registrationDate'],
-      edit: [],
-      hidden: ['phone', 'email', 'address', 'estimatedIncome'], // Hide sensitive info
-    },
-  },
+// ─── Basic role predicates ─────────────────────────────────────────────────────
+export const isAdmin          = (user) => user?.role === ROLES.ADMIN;
+export const isBfarSupervisor = (user) => user?.role === ROLES.BFAR_SUPERVISOR;
+export const isBfarViewer     = (user) => user?.role === ROLES.BFAR_VIEWER;
+export const isLguSupervisor  = (user) => user?.role === ROLES.LGU_SUPERVISOR;
+export const isLguEditor      = (user) => user?.role === ROLES.LGU_EDITOR;
+
+export const isBfarDepartment = (user) =>
+  [ROLES.BFAR_SUPERVISOR, ROLES.BFAR_VIEWER].includes(user?.role);
+export const isLguDepartment  = (user) =>
+  [ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(user?.role);
+
+/** Top-level admin-tier: admin or bfar_supervisor */
+export const isTopAdmin = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR].includes(user?.role);
+
+// ─── PBAC: Data CRUD policies ──────────────────────────────────────────────────
+
+/** All authenticated roles can read data */
+export const canRead = (user) => !!user?.role;
+
+/**
+ * ABAC create policy:
+ *  - admin, bfar_supervisor, lgu_supervisor → create directly, saved immediately
+ *  - lgu_editor                             → can create but submission goes to approval queue
+ *  - bfar_viewer                            → cannot create
+ */
+export const canCreate = (user) => {
+  if (!user?.role) return false;
+  return [
+    ROLES.ADMIN,
+    ROLES.BFAR_SUPERVISOR,
+    ROLES.LGU_SUPERVISOR,
+    ROLES.LGU_EDITOR,
+  ].includes(user.role);
 };
 
-// Check if user has permission for an action
-export const hasPermission = (userRole, resource, action) => {
-  if (!permissions[userRole]) {
-    return false;
-  }
+/** Whether this role's creates require approval (ABAC: role attribute check) */
+export const createRequiresApproval = (user) => user?.role === ROLES.LGU_EDITOR;
 
-  const resourcePerms = permissions[userRole][resource];
-  if (!resourcePerms) {
-    return false;
-  }
-
-  return resourcePerms[action] === true;
+/**
+ * ABAC update policy:
+ *  - admin, bfar_supervisor → update any record
+ *  - lgu_supervisor         → update records within their city attribute
+ *  - lgu_editor             → update records (edit + renew their own submissions)
+ *  - bfar_viewer            → cannot update
+ *  Legacy values lgu / lgu_admin / lgu_user / officer are also granted update
+ */
+export const canUpdate = (user) => {
+  if (!user?.role) return false;
+  const lguRoles = [
+    ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR,
+    // legacy aliases — in case localStorage hasn't been refreshed yet
+    'lgu', 'lgu_admin', 'lgu_user', 'officer',
+  ];
+  return lguRoles.includes(user.role);
 };
 
-// Get all permissions for a role
-export const getRolePermissions = (role) => {
-  return permissions[role] || {};
+/**
+ * PBAC delete policy:
+ *  Only admin and bfar_supervisor may delete records.
+ */
+export const canDelete = (user) => {
+  if (!user?.role) return false;
+  return [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR].includes(user.role);
 };
 
-// Get accessible fields for viewing
-export const getViewableFields = (userRole, resource) => {
-  const access = fieldAccess[userRole]?.[resource];
-  if (!access) {
-    return []; // No access by default
-  }
+// ─── PBAC: User management policies ───────────────────────────────────────────
 
-  if (access.view.includes('*')) {
-    return ['*']; // All fields
-  }
+export const canManageUsers  = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR].includes(user?.role);
 
-  return access.view;
+export const canCreateUsers  = (user) => canManageUsers(user);
+
+/**
+ * ABAC: which roles this user is allowed to assign (role-scope restriction)
+ */
+export const getCreatableRoles = (user) => {
+  switch (user?.role) {
+    case ROLES.ADMIN:
+      return [
+        ROLES.ADMIN,
+        ROLES.BFAR_SUPERVISOR,
+        ROLES.BFAR_VIEWER,
+        ROLES.LGU_SUPERVISOR,
+        ROLES.LGU_EDITOR,
+      ];
+    case ROLES.BFAR_SUPERVISOR:
+      return [
+        ROLES.BFAR_SUPERVISOR,
+        ROLES.BFAR_VIEWER,
+        ROLES.LGU_SUPERVISOR,
+        ROLES.LGU_EDITOR,
+      ];
+    case ROLES.LGU_SUPERVISOR:
+      return [ROLES.LGU_EDITOR];
+    default:
+      return [];
+  }
 };
 
-// Get editable fields
-export const getEditableFields = (userRole, resource) => {
-  const access = fieldAccess[userRole]?.[resource];
-  if (!access) {
-    return []; // No access by default
-  }
+// ─── PBAC: Approval policy ─────────────────────────────────────────────────────
 
-  return access.edit || [];
+/**
+ * admin and bfar_supervisor can approve/reject any submission.
+ * lgu_supervisor can approve/reject submissions within their city.
+ */
+export const canApprove = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR, ROLES.LGU_SUPERVISOR].includes(user?.role);
+
+// ─── PBAC: Audit log policy ────────────────────────────────────────────────────
+
+/** Only admin and bfar_supervisor can view audit logs */
+export const canViewAuditLog = (user) =>
+  [ROLES.ADMIN, ROLES.BFAR_SUPERVISOR].includes(user?.role);
+
+// ─── Display helpers ───────────────────────────────────────────────────────────
+
+export const getRoleDisplayName = (role) => {
+  const names = {
+    [ROLES.ADMIN]:           'Admin',
+    [ROLES.BFAR_SUPERVISOR]: 'BFAR Supervisor',
+    [ROLES.BFAR_VIEWER]:     'BFAR Viewer',
+    [ROLES.LGU_SUPERVISOR]:  'LGU Supervisor',
+    [ROLES.LGU_EDITOR]:      'LGU Editor',
+    // Legacy labels
+    lgu:        'LGU (Legacy)',
+    viewer:     'Viewer (Legacy)',
+    bfar_admin: 'BFAR Admin (Legacy)',
+    bfar_user:  'BFAR User (Legacy)',
+    lgu_admin:  'LGU Admin (Legacy)',
+    lgu_user:   'LGU User (Legacy)',
+  };
+  return names[role] || role || 'Unknown';
 };
 
-// Get hidden fields
-export const getHiddenFields = (userRole, resource) => {
-  const access = fieldAccess[userRole]?.[resource];
-  if (!access) {
-    return []; // No hidden fields by default
-  }
-
-  return access.hidden || [];
+export const getRoleBadgeColor = (role) => {
+  const colors = {
+    [ROLES.ADMIN]:           { bg: '#fee2e2', text: '#991b1b' },
+    [ROLES.BFAR_SUPERVISOR]: { bg: '#dbeafe', text: '#1e40af' },
+    [ROLES.BFAR_VIEWER]:     { bg: '#e0f2fe', text: '#0369a1' },
+    [ROLES.LGU_SUPERVISOR]:  { bg: '#dcfce7', text: '#166534' },
+    [ROLES.LGU_EDITOR]:      { bg: '#fefce8', text: '#854d0e' },
+  };
+  return colors[role] || { bg: '#f3f4f6', text: '#6b7280' };
 };
 
-// Filter data based on user role
-export const filterDataByRole = (data, userRole, resource) => {
-  if (!Array.isArray(data)) {
-    data = [data];
-  }
-
-  const viewableFields = getViewableFields(userRole, resource);
-  const hiddenFields = getHiddenFields(userRole, resource);
-
-  if (viewableFields.includes('*')) {
-    // Remove hidden fields if any
-    return data.map(item => {
-      const filtered = { ...item };
-      hiddenFields.forEach(field => {
-        delete filtered[field];
-      });
-      return filtered;
-    });
-  }
-
-  // Only include viewable fields
-  return data.map(item => {
-    const filtered = {};
-    viewableFields.forEach(field => {
-      if (field in item) {
-        filtered[field] = item[field];
-      }
-    });
-    return filtered;
-  });
-};
-
-export default {
-  permissions,
-  fieldAccess,
-  hasPermission,
-  getRolePermissions,
-  getViewableFields,
-  getEditableFields,
-  getHiddenFields,
-  filterDataByRole,
+export const getDepartmentFromRole = (role) => {
+  if (role === ROLES.ADMIN) return 'admin';
+  if ([ROLES.BFAR_SUPERVISOR, ROLES.BFAR_VIEWER].includes(role)) return 'bfar';
+  if ([ROLES.LGU_SUPERVISOR, ROLES.LGU_EDITOR].includes(role)) return 'lgu';
+  return '';
 };

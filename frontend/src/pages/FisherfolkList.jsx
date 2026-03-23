@@ -189,6 +189,10 @@ export default function FisherfolkList() {
     setError('');
   };
 
+  // Whether the current user can edit/renew records
+  const userCanUpdate = user && ['admin','bfar_supervisor','lgu_supervisor','lgu_editor','lgu','lgu_admin','lgu_user','officer'].includes(user.role);
+  const userCanDelete = user && ['admin','bfar_supervisor'].includes(user.role);
+
   const filteredFisherfolk = fisherfolk.filter((fish) => {
     const fishStatus = fish.status ? fish.status.toLowerCase() : 'active';
     const statusMatch = activeTab === 'active' ? fishStatus === 'active' : fishStatus === 'inactive';
@@ -234,7 +238,7 @@ export default function FisherfolkList() {
             <div className="tab-content">
               <div className="table-header">
                 <h3>List of Fisherfolk:</h3>
-                {canCreate(user) && (
+                {(userCanUpdate || userCanDelete || (user && ['admin','bfar_supervisor','lgu_supervisor','lgu_editor','lgu','lgu_admin','lgu_user','officer'].includes(user.role))) && (
                   <button className="add-btn" onClick={() => { setShowAddModal(true); setIsEditing(false); setFormData(defaultForm); setDuplicateWarning(null); }}>
                     + Add Fisherfolk
                   </button>
@@ -270,7 +274,7 @@ export default function FisherfolkList() {
                       <th>DISTRICT</th>
                       <th>CITY/MUNICIPALITY</th>
                       <th>BARANGAY</th>
-                      {(canUpdate(user) || canDelete(user)) && <th>ACTIONS</th>}
+                      {(userCanUpdate || userCanDelete) && <th>ACTIONS</th>}
                     </tr>
                     <tr className="filter-row">
                       <td colSpan={4}></td>
@@ -287,7 +291,7 @@ export default function FisherfolkList() {
                       </td>
                       <td><input type="text" placeholder="Filter city/municipality" className="filter-input" value={filters.cityMunicipality} onChange={handleFilterChange} name="cityMunicipality" /></td>
                       <td><input type="text" placeholder="Filter barangay" className="filter-input" value={filters.barangay} onChange={handleFilterChange} name="barangay" /></td>
-                      {(canUpdate(user) || canDelete(user)) && <td></td>}
+                      {(userCanUpdate || userCanDelete) && <td></td>}
                     </tr>
                   </thead>
                   <tbody>
@@ -307,16 +311,16 @@ export default function FisherfolkList() {
                           <td>{fish.province?.replace(/\(Not a Province\)/gi, '').trim() || '-'}</td>
                           <td>{fish.cityMunicipality || '-'}</td>
                           <td>{fish.barangay || '-'}</td>
-                          {(canUpdate(user) || canDelete(user)) && (
+                          {(userCanUpdate || userCanDelete) && (
                             <td>
                               <div style={{ display: 'flex', gap: '6px' }}>
-                                {canUpdate(user) && (
+                                {userCanUpdate && (
                                   <button className="edit-btn-sm" onClick={() => handleEditClick(fish)}>Edit</button>
                                 )}
-                                {canUpdate(user) && (
+                                {userCanUpdate && (
                                   <button className="renew-btn-sm" onClick={() => handleRenewClick(fish)}>Renew</button>
                                 )}
-                                {canDelete(user) && (
+                                {userCanDelete && (
                                   <button className="delete-btn-sm" onClick={() => handleDeleteClick(fish._id)}>Delete</button>
                                 )}
                               </div>

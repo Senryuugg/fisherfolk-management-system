@@ -54,7 +54,7 @@ export const authorizeRole = (allowedRoles) => (req, res, next) => {
 // ─── Policy sets ──────────────────────────────────────────────────────────────
 const ALL_ROLES        = ['admin', 'bfar_supervisor', 'bfar_viewer', 'lgu_supervisor', 'lgu_editor'];
 const WRITE_ROLES      = ['admin', 'bfar_supervisor', 'lgu_supervisor', 'lgu_editor'];
-const UPDATE_ROLES     = ['admin', 'bfar_supervisor', 'lgu_supervisor'];
+const UPDATE_ROLES     = ['admin', 'bfar_supervisor', 'lgu_supervisor', 'lgu_editor'];
 const DELETE_ROLES     = ['admin', 'bfar_supervisor'];
 const MANAGE_USER_ROLES= ['admin', 'bfar_supervisor', 'lgu_supervisor'];
 const APPROVE_ROLES    = ['admin', 'bfar_supervisor', 'lgu_supervisor'];
