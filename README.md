@@ -230,10 +230,3 @@ The application uses CSS with a consistent color scheme:
 - Tokens expire after 7 days
 - Users need to login again after expiration
 
-## License
-
-Government of the Philippines - Department of Agriculture
-
----
-
-**Questions?** Contact BFAR for support.
